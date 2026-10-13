@@ -77,8 +77,8 @@
     </header>
 
     <!-- Main Content -->
-    <main style="min-height: calc(100vh - 180px); padding: 40px 0;">
-        <div class="container">
+    <main style="min-height: calc(100vh - 180px); padding: @yield('main_padding', '40px 0');">
+        <div class="@yield('container_class', 'container')">
             @yield('content')
         </div>
     </main>

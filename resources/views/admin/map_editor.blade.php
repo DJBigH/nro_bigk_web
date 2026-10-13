@@ -1,67 +1,95 @@
 @extends('admin.layout')
 
 @section('admin_title', 'Quản Lý Map - NRO Panel')
+@section('container_class', 'map-editor-wide-container')
+@section('main_padding', '8px 0')
 
 @section('admin_content')
+<style>
+.map-editor-wide-container {
+    width: 100% !important;
+    max-width: 99vw !important;
+    margin: 0 auto !important;
+    padding: 0 10px !important;
+}
+#adminMainLayout {
+    grid-template-columns: var(--admin-sidebar-w, 200px) 1fr !important;
+    gap: 12px !important;
+    margin-top: 6px !important;
+}
+.map-card-item:hover {
+    border-color: #388bfd !important;
+    background: rgba(56, 139, 253, 0.1) !important;
+}
+</style>
+
+<div id="mapEditorWrapper">
 <!-- Header Bar -->
-<div style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 14px 18px; margin-bottom: 14px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <div>
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <a href="{{ route('admin.dashboard') }}" style="color: #58a6ff; text-decoration: none; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">
-                    ⬅ Quản lý map
-                </a>
-            </div>
-            <h2 id="currentMapTitle" style="font-family: 'Segoe UI', sans-serif; font-size: 1.25rem; color: #f0f6fc; margin: 0; font-weight: 700;">
-                Map #0 - Làng Aru
-            </h2>
-            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 4px; line-height: 1.4;">
-                Kéo nút tròn để dời vị trí (tọa độ = chân NPC/quái) · kéo khung vàng để dời cổng, kéo góc dưới phải để đổi cỡ · click để xem/sửa · phím Delete xoá, mũi tên dịch 1px (Shift: 10px). Lưu ghi vào DB; game chỉ nạp lại khi bấm Áp dụng vào game.
+<div style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 10px 16px; margin-bottom: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <button type="button" onclick="toggleAdminSidebar()" class="btn" id="btnToggleSidebar" title="Bật/Tắt Sidebar Menu Admin để mở rộng khung vẽ" style="background: #21262d; color: #58a6ff; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                ◀ Thu gọn Menu
+            </button>
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <a href="{{ route('admin.dashboard') }}" style="color: #8b949e; text-decoration: none; font-size: 0.82rem; font-weight: 500;">
+                        Admin
+                    </a>
+                    <span style="color: #484f58; font-size: 0.8rem;">/</span>
+                    <span style="color: #58a6ff; font-size: 0.82rem; font-weight: 600;">Quản lý map</span>
+                </div>
+                <h2 id="currentMapTitle" style="font-family: 'Segoe UI', sans-serif; font-size: 1.15rem; color: #f0f6fc; margin: 2px 0 0 0; font-weight: 700;">
+                    Map #0 - Làng Aru
+                </h2>
             </div>
         </div>
 
         <!-- Top Action Buttons -->
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn" style="background: #1f6feb; color: #fff; font-weight: 600; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; border: none;" onclick="saveMapData()">
+            <button type="button" class="btn" style="background: #1f6feb; color: #fff; font-weight: 600; padding: 6px 14px; border-radius: 6px; font-size: 0.84rem; border: none;" onclick="saveMapData()">
                 💾 Lưu
             </button>
-            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem;" onclick="undoLastChange()">
+            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 0.84rem;" onclick="undoLastChange()">
                 ↺ Hoàn tác
             </button>
-            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem;" onclick="showHistoryModal()">
+            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 0.84rem;" onclick="showHistoryModal()">
                 🕒 Lịch sử
             </button>
-            <button type="button" class="btn" style="background: #da3633; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; border: none;" onclick="deleteCurrentMap()">
+            <button type="button" class="btn" style="background: #da3633; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.84rem; border: none;" onclick="deleteCurrentMap()">
                 🗑 Xoá map
             </button>
-            <button type="button" class="btn" style="background: #6e1717; color: #ffa39e; border: 1px solid #a8071a; font-weight: 600; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem;" onclick="applyToGameMaintenance()">
+            <button type="button" class="btn" style="background: #6e1717; color: #ffa39e; border: 1px solid #a8071a; font-weight: 600; padding: 6px 14px; border-radius: 6px; font-size: 0.84rem;" onclick="applyToGameMaintenance()">
                 ⏱ Áp dụng vào game (bảo trì 3s)
+            </button>
+            <button type="button" class="btn" onclick="toggleFullscreenEditor()" id="btnFullscreen" title="Phóng to toàn màn hình" style="background: #21262d; color: #ffd700; border: 1px solid #d29922; padding: 6px 12px; border-radius: 6px; font-size: 0.84rem; font-weight: 600;">
+                ⛶ Toàn màn hình
             </button>
         </div>
     </div>
 </div>
 
 <!-- 3-Column Main Workspace -->
-<div style="display: flex; gap: 14px; align-items: stretch; min-height: 800px;">
+<div style="display: flex; gap: 12px; align-items: stretch; min-height: calc(100vh - 210px);">
     
     <!-- LEFT COLUMN: Danh sách map -->
-    <div style="width: 250px; flex-shrink: 0; background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
-        <button type="button" class="btn" style="background: #1f6feb; color: #fff; font-weight: 600; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; width: 100%; border: none; margin-bottom: 10px;" onclick="openCreateMapModal()">
+    <div style="width: 220px; flex-shrink: 0; background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 10px; display: flex; flex-direction: column;">
+        <button type="button" class="btn" style="background: #1f6feb; color: #fff; font-weight: 600; padding: 7px 12px; border-radius: 6px; font-size: 0.83rem; width: 100%; border: none; margin-bottom: 8px;" onclick="openCreateMapModal()">
             ➕ Tạo map mới
         </button>
 
-        <div style="position: relative; margin-bottom: 12px;">
-            <input type="text" id="mapSearchInput" placeholder="Tìm map theo tên hoặc id..." oninput="filterMapList()" style="width: 100%; background: #040d1a; border: 1px solid #30363d; border-radius: 6px; padding: 6px 10px; color: #f0f6fc; font-size: 0.82rem; outline: none;">
+        <div style="position: relative; margin-bottom: 8px;">
+            <input type="text" id="mapSearchInput" placeholder="Tìm map theo tên hoặc id..." oninput="filterMapList()" style="width: 100%; background: #040d1a; border: 1px solid #30363d; border-radius: 6px; padding: 6px 8px; color: #f0f6fc; font-size: 0.8rem; outline: none;">
         </div>
 
         <!-- Scrollable Map Cards List -->
-        <div id="mapCardsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; max-height: 720px; padding-right: 4px;">
+        <div id="mapCardsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; height: calc(100vh - 300px); min-height: 520px; padding-right: 3px;">
             @foreach($maps as $m)
-                <div class="map-card-item {{ $m->id == 0 ? 'active' : '' }}" id="map-card-{{ $m->id }}" onclick="switchMap({{ $m->id }})" data-name="{{ strtolower($m->name) }}" data-id="{{ $m->id }}" style="padding: 8px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s; border: 1px solid {{ $m->id == 0 ? '#3fb950' : '#21262d' }}; background: {{ $m->id == 0 ? 'rgba(35, 134, 54, 0.18)' : 'rgba(22, 27, 34, 0.6)' }};">
-                    <div style="font-weight: 700; color: {{ $m->id == 0 ? '#3fb950' : '#f0f6fc' }}; font-size: 0.85rem; display: flex; justify-content: space-between;">
+                <div class="map-card-item {{ $m->id == 0 ? 'active' : '' }}" id="map-card-{{ $m->id }}" onclick="switchMap({{ $m->id }})" data-name="{{ strtolower($m->name) }}" data-id="{{ $m->id }}" style="padding: 7px 9px; border-radius: 6px; cursor: pointer; transition: all 0.15s; border: 1px solid {{ $m->id == 0 ? '#3fb950' : '#21262d' }}; background: {{ $m->id == 0 ? 'rgba(35, 134, 54, 0.18)' : 'rgba(22, 27, 34, 0.6)' }};">
+                    <div style="font-weight: 700; color: {{ $m->id == 0 ? '#3fb950' : '#f0f6fc' }}; font-size: 0.83rem; display: flex; justify-content: space-between;">
                         <span>#{{ $m->id }} · {{ $m->name }}</span>
                     </div>
-                    <div style="font-size: 0.73rem; color: #8b949e; margin-top: 2px;">
+                    <div style="font-size: 0.72rem; color: #8b949e; margin-top: 2px;">
                         {{ $m->npc_count ?? 0 }} NPC · {{ $m->mob_count ?? 0 }} quái · nền {{ $m->bg_id ?? 0 }}
                     </div>
                 </div>
@@ -70,15 +98,15 @@
     </div>
 
     <!-- CENTER COLUMN: Canvas Workspace -->
-    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
         <!-- Top Toolbar -->
-        <div style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 0.82rem; color: #c9d1d9;">
+        <div style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 7px 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.81rem; color: #c9d1d9;">
                 <!-- Zoom pills -->
                 <div style="display: flex; border: 1px solid #30363d; border-radius: 6px; overflow: hidden;">
                     <button type="button" class="zoom-btn" onclick="setZoom(0.5)" id="zoom-05" style="background: #21262d; border: none; color: #8b949e; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;">0.5x</button>
                     <button type="button" class="zoom-btn" onclick="setZoom(1.0)" id="zoom-10" style="background: rgba(35, 134, 54, 0.35); border: none; color: #3fb950; font-weight: 700; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;">1x</button>
-                    <button type="button" class="zoom-btn" onclick="setZoom(1.5)" id="zoom-15" style="background: #21262d; border: none; color: #8b949e; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;">2x</button>
+                    <button type="button" class="zoom-btn" onclick="setZoom(2.0)" id="zoom-20" style="background: #21262d; border: none; color: #8b949e; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;">2x</button>
                 </div>
 
                 <!-- Layer Checkboxes -->
@@ -106,27 +134,29 @@
             </div>
 
             <!-- Action Buttons -->
-            <div style="display: flex; gap: 6px; align-items: center;">
-                <button type="button" class="btn" style="background: #21262d; color: #ffd700; border: 1px solid #d29922; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px;" onclick="openAddNpcModal()">
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn" style="background: #21262d; color: #ffd700; border: 1px solid #d29922; font-size: 0.79rem; padding: 4px 9px; border-radius: 6px;" onclick="openAddNpcModal()">
                     🧙 Thêm NPC
                 </button>
-                <button type="button" class="btn" style="background: #21262d; color: #ff7b72; border: 1px solid #f85149; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px;" onclick="openAddMobModal()">
+                <button type="button" class="btn" style="background: #21262d; color: #ff7b72; border: 1px solid #f85149; font-size: 0.79rem; padding: 4px 9px; border-radius: 6px;" onclick="openAddMobModal()">
                     ➕ Thêm quái
                 </button>
-                <button type="button" class="btn" style="background: #21262d; color: #58a6ff; border: 1px solid #1f6feb; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px;" onclick="openAddWaypointModal()">
+                <button type="button" class="btn" style="background: #21262d; color: #58a6ff; border: 1px solid #1f6feb; font-size: 0.79rem; padding: 4px 9px; border-radius: 6px;" onclick="openAddWaypointModal()">
                     🚪 Thêm cổng
                 </button>
-                <button type="button" class="btn" style="background: #21262d; color: #7ee787; border: 1px solid #238636; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px;" onclick="addDecorationItem()">
+                <button type="button" class="btn" style="background: #21262d; color: #7ee787; border: 1px solid #238636; font-size: 0.79rem; padding: 4px 9px; border-radius: 6px;" onclick="addDecorationItem()">
                     🌲 Thêm trang trí
                 </button>
             </div>
         </div>
 
         <!-- Canvas Container Box -->
-        <div id="canvasViewport" style="background: #000; border: 1px solid #30363d; border-radius: 8px; overflow: auto; position: relative; max-height: 680px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
-            <div id="canvasScaler" style="transform-origin: 0 0; display: inline-block;">
-                <canvas id="mapCanvas" width="1248" height="576" style="display: block; cursor: crosshair;">
-                </canvas>
+        <div id="canvasViewport" style="background: #000; border: 1px solid #30363d; border-radius: 8px; overflow: auto; position: relative; height: calc(100vh - 240px); min-height: 580px; max-height: 840px; box-shadow: inset 0 0 25px rgba(0,0,0,0.85); width: 100%;">
+            <div id="canvasScalerWrap" style="display: inline-block; position: relative; width: 1248px; height: 576px;">
+                <div id="canvasScaler" style="transform-origin: 0 0; display: block;">
+                    <canvas id="mapCanvas" width="1248" height="576" style="display: block; cursor: crosshair;">
+                    </canvas>
+                </div>
             </div>
         </div>
 
@@ -138,7 +168,7 @@
     </div>
 
     <!-- RIGHT COLUMN: Inspector Tab Panel -->
-    <div style="width: 280px; flex-shrink: 0; background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
+    <div style="width: 260px; flex-shrink: 0; background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 10px; display: flex; flex-direction: column;">
         <!-- Tabs Header -->
         <div style="display: flex; gap: 4px; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-bottom: 12px;">
             <button type="button" class="tab-btn active" id="tab-info" onclick="switchRightTab('info')" style="background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid #3fb950; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
@@ -312,6 +342,7 @@
         </div>
     </div>
 </div>
+</div><!-- #mapEditorWrapper -->
 
 <script>
 // =============================================================
@@ -430,6 +461,7 @@ function switchMap(mapId) {
                 updateHeaderInfo();
                 canvas.width = currentMapData.width || 1248;
                 canvas.height = currentMapData.height || 576;
+                setZoom(currentZoom);
                 selectedEntity = null;
                 renderCanvas();
                 renderRightInspector();
@@ -464,13 +496,22 @@ function setZoom(scale) {
         b.style.color = '#8b949e';
         b.style.fontWeight = 'normal';
     });
-    const activeBtn = document.getElementById(`zoom-${Math.round(scale * 10)}`);
+    const key = scale === 0.5 ? '05' : (scale === 1.0 ? '10' : '20');
+    const activeBtn = document.getElementById(`zoom-${key}`);
     if (activeBtn) {
         activeBtn.style.background = 'rgba(35, 134, 54, 0.35)';
         activeBtn.style.color = '#3fb950';
         activeBtn.style.fontWeight = '700';
     }
-    document.getElementById('canvasScaler').style.transform = `scale(${scale})`;
+    const scaler = document.getElementById('canvasScaler');
+    const wrap = document.getElementById('canvasScalerWrap');
+    if (scaler) {
+        scaler.style.transform = `scale(${scale})`;
+    }
+    if (wrap && canvas) {
+        wrap.style.width = Math.round(canvas.width * scale) + 'px';
+        wrap.style.height = Math.round(canvas.height * scale) + 'px';
+    }
 }
 
 // =============================================================
@@ -1225,8 +1266,40 @@ function openCreateMapModal() {
     if (window.showToast) window.showToast('Tính năng nhân bản và tạo Map ID mới đang sẵn sàng', 'info');
 }
 
+function toggleFullscreenEditor() {
+    const editor = document.getElementById('mapEditorWrapper');
+    if (!document.fullscreenElement) {
+        if (editor.requestFullscreen) {
+            editor.requestFullscreen();
+        } else if (editor.webkitRequestFullscreen) {
+            editor.webkitRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+
+document.addEventListener('fullscreenchange', () => {
+    const btn = document.getElementById('btnFullscreen');
+    if (btn) {
+        btn.innerHTML = document.fullscreenElement ? '🗗 Thu nhỏ' : '⛶ Toàn màn hình';
+    }
+});
+
 // Khởi tạo ban đầu
 document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('admin_sidebar_collapsed') === '1') {
+        const layout = document.getElementById('adminMainLayout');
+        const sidebar = document.getElementById('adminSidebar');
+        if (sidebar && layout) {
+            sidebar.style.display = 'none';
+            layout.style.setProperty('--admin-sidebar-w', '0px');
+            const btn = document.getElementById('btnToggleSidebar');
+            if (btn) btn.innerHTML = '▶ Mở Menu Admin';
+        }
+    }
     switchMap(0);
 });
 </script>

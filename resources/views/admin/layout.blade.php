@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('title', 'Admin Panel - NRO BigK')
+@section('container_class', 'admin-main-container')
+@section('main_padding', '12px 0')
 
 @section('content')
 @php
@@ -10,10 +12,10 @@
     $isEventActive = Route::is('admin.spin*');
 @endphp
 
-<div class="admin-layout">
+<div class="admin-layout" id="adminMainLayout">
     
     <!-- Collapsible Grouped Sidebar -->
-    <div class="admin-sidebar" style="padding: 15px 12px; background: rgba(14, 17, 24, 0.95); border: 1px solid rgba(255, 107, 0, 0.25); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+    <div class="admin-sidebar" id="adminSidebar" style="padding: 15px 12px; background: rgba(14, 17, 24, 0.95); border: 1px solid rgba(255, 107, 0, 0.25); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
         
         <!-- Sidebar Header -->
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px 14px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 12px;">
@@ -227,6 +229,24 @@
 </div>
 
 <style>
+.admin-main-container {
+    width: 100% !important;
+    max-width: 98vw !important;
+    margin: 0 auto !important;
+    padding: 0 10px !important;
+}
+.admin-layout {
+    display: grid !important;
+    grid-template-columns: var(--admin-sidebar-w, 240px) 1fr !important;
+    gap: 14px !important;
+    margin-top: 10px !important;
+    transition: grid-template-columns 0.2s ease !important;
+}
+@media (max-width: 1100px) {
+    .admin-layout {
+        grid-template-columns: 1fr !important;
+    }
+}
 @keyframes modalPop {
     from { opacity: 0; transform: scale(0.92); }
     to { opacity: 1; transform: scale(1); }
@@ -235,6 +255,26 @@
 
 <!-- Sidebar Interactive Accordion & Global Modal Script -->
 <script>
+window.toggleAdminSidebar = function() {
+    const layout = document.getElementById('adminMainLayout');
+    const sidebar = document.getElementById('adminSidebar');
+    if (!layout || !sidebar) return;
+    const isHidden = sidebar.style.display === 'none';
+    if (isHidden) {
+        sidebar.style.display = 'block';
+        layout.style.setProperty('--admin-sidebar-w', '240px');
+        localStorage.setItem('admin_sidebar_collapsed', '0');
+        const btn = document.getElementById('btnToggleSidebar');
+        if (btn) btn.innerHTML = '◀ Thu gọn Menu';
+    } else {
+        sidebar.style.display = 'none';
+        layout.style.setProperty('--admin-sidebar-w', '0px');
+        localStorage.setItem('admin_sidebar_collapsed', '1');
+        const btn = document.getElementById('btnToggleSidebar');
+        if (btn) btn.innerHTML = '▶ Mở Menu Admin';
+    }
+};
+
 function updateToggleAllBtnState() {
     const btn = document.getElementById('toggleAllBtn');
     if (!btn) return;
