@@ -410,5 +410,6 @@ async function toggleChat(enable) {
         }
     })
     .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối tới Server!', 'error'));
+}
 </script>
 @endsection

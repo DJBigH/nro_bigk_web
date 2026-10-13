@@ -21,8 +21,8 @@
                 <span style="font-size: 1.2rem;">⚡</span>
                 <span style="color: var(--primary); font-size: 0.95rem; font-weight: 800; font-family: 'Orbitron', sans-serif; letter-spacing: 0.5px;">ADMIN PANEL</span>
             </div>
-            <button type="button" onclick="toggleAllGroups()" title="Mở rộng / Thu gọn tất cả" style="background: none; border: none; color: #888; font-size: 0.8rem; cursor: pointer; padding: 4px; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#888'">
-                ⇕ Gom gọn
+            <button type="button" id="toggleAllBtn" onclick="toggleAllGroups()" title="Thu gọn tất cả các nhóm menu" style="background: none; border: none; color: #888; font-size: 0.8rem; cursor: pointer; padding: 4px; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#888'">
+                ↕ Gom gọn
             </button>
         </div>
 
@@ -230,6 +230,19 @@
 
 <!-- Sidebar Interactive Accordion & Global Modal Script -->
 <script>
+function updateToggleAllBtnState() {
+    const btn = document.getElementById('toggleAllBtn');
+    if (!btn) return;
+    const openGroups = document.querySelectorAll('.sidebar-group.is-open');
+    if (openGroups.length === 0) {
+        btn.innerHTML = '↕ Mở rộng';
+        btn.title = 'Mở rộng tất cả các nhóm menu';
+    } else {
+        btn.innerHTML = '↕ Gom gọn';
+        btn.title = 'Thu gọn tất cả các nhóm menu';
+    }
+}
+
 function toggleGroup(groupId) {
     const group = document.getElementById(groupId);
     if (!group) return;
@@ -246,22 +259,31 @@ function toggleGroup(groupId) {
         arrow.style.transform = 'rotate(0deg)';
         group.classList.add('is-open');
     }
+    updateToggleAllBtnState();
 }
 
-let allGroupsExpanded = false;
 function toggleAllGroups() {
-    allGroupsExpanded = !allGroupsExpanded;
+    const openGroups = document.querySelectorAll('.sidebar-group.is-open');
+    const shouldCollapse = openGroups.length > 0;
     const groups = document.querySelectorAll('.sidebar-group');
+
     groups.forEach(g => {
         const items = g.querySelector('.group-items');
         const arrow = g.querySelector('.group-arrow');
         if (items && arrow) {
-            items.style.display = allGroupsExpanded ? 'block' : 'none';
-            arrow.style.transform = allGroupsExpanded ? 'rotate(0deg)' : 'rotate(-90deg)';
-            if (allGroupsExpanded) g.classList.add('is-open');
-            else g.classList.remove('is-open');
+            if (shouldCollapse) {
+                items.style.display = 'none';
+                arrow.style.transform = 'rotate(-90deg)';
+                g.classList.remove('is-open');
+            } else {
+                items.style.display = 'block';
+                arrow.style.transform = 'rotate(0deg)';
+                g.classList.add('is-open');
+            }
         }
     });
+
+    updateToggleAllBtnState();
 }
 
 /**

@@ -1577,6 +1577,10 @@ class AdminController extends Controller
                 'map' => [
                     'id' => $map->id,
                     'name' => $mapName,
+                    'planet_id' => (int)($map->planet_id ?? 0),
+                    'bg_id' => (int)($map->bg_id ?? 0),
+                    'bg_type' => (int)($map->bg_type ?? 0),
+                    'tile_id' => (int)($map->tile_id ?? 1),
                     'npcs' => $npcs,
                     'mobs' => $mobs,
                     'waypoints' => $waypoints
