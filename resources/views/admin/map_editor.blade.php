@@ -111,12 +111,12 @@
                 </button>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: #8b949e;">
-                <span id="mapPaginationCountInfo">15 / 178 map</span>
+                <span id="mapPaginationCountInfo">12 / 178 map</span>
                 <select id="mapPerPageSelect" onchange="changeMapPerPage(this.value)" style="background: #040d1a; color: #8b949e; border: 1px solid #21262d; border-radius: 4px; font-size: 0.72rem; cursor: pointer; padding: 2px 4px; outline: none;">
-                    <option value="10">10 / trang</option>
-                    <option value="15" selected>15 / trang</option>
-                    <option value="25">25 / trang</option>
-                    <option value="50">50 / trang</option>
+                    <option value="8">8 / trang</option>
+                    <option value="12" selected>12 / trang</option>
+                    <option value="24">24 / trang</option>
+                    <option value="48">48 / trang</option>
                     <option value="999">Tất cả</option>
                 </select>
             </div>
@@ -469,7 +469,7 @@ function getTileImage(tileId, tileIndex) {
 // MAP SWITCHING & DATA LOADING
 // =============================================================
 let mapCurrentPage = 1;
-let mapPerPage = 15;
+let mapPerPage = 12;
 let filteredMapCards = [];
 
 function initMapPagination() {
@@ -548,7 +548,7 @@ function goToMapPage(page) {
 }
 
 function changeMapPerPage(val) {
-    mapPerPage = parseInt(val) || 15;
+    mapPerPage = parseInt(val) || 12;
     mapCurrentPage = 1;
     renderMapPagination();
 }
