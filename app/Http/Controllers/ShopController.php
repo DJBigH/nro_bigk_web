@@ -86,45 +86,7 @@ class ShopController extends Controller
             ]);
         }
 
-        // 4. Check if player is online
-        // Compare last_time_login and last_time_logout
-        $lastLogin = $account->last_time_login ? strtotime($account->last_time_login) : 0;
-        $lastLogout = $account->last_time_logout ? strtotime($account->last_time_logout) : 0;
-
-        if ($lastLogin > $lastLogout) {
-            return response()->json([
-                'success' => false,
-                'message' => '⚠️ Tài khoản đang online trong game. Vui lòng THOÁT GAME hoàn toàn trước khi mua để tránh bị mất đồ.'
-            ]);
-        }
-
-        // 5. Decode inventory and check space
-        $itemsBag = json_decode($player->items_bag, true);
-        if (!is_array($itemsBag)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu hành trang nhân vật không hợp lệ.'
-            ]);
-        }
-
-        // Find empty slot (first slot where itemId = -1)
-        $emptySlotIndex = -1;
-        foreach ($itemsBag as $index => $slotStr) {
-            $slotData = json_decode($slotStr, true);
-            if (is_array($slotData) && isset($slotData[0]) && $slotData[0] == -1) {
-                $emptySlotIndex = $index;
-                break;
-            }
-        }
-
-        if ($emptySlotIndex === -1) {
-            return response()->json([
-                'success' => false,
-                'message' => '⚠️ Hành trang nhân vật đã đầy. Vui lòng cất bớt đồ vào rương rồi thử lại.'
-            ]);
-        }
-
-        // 6. Deliver item and update DB
+        // 4. Deliver item to Web Chest and update DB
         DB::beginTransaction();
         try {
             // Deduct VND
@@ -139,22 +101,13 @@ class ShopController extends Controller
                 $shopItem->decrement('quantity');
             }
 
-            // Write item to player inventory JSON
-            // Format of slot data: [itemId, quantity, optionsJsonString, timestamp]
-            $newItemSlot = [
-                (int)$shopItem->item_template_id,
-                1, // Quantity 1 per buy. If quantity in templates can stack, you can change this.
-                "[]", // Default options
-                round(microtime(true) * 1000)
-            ];
-
-            $itemsBag[$emptySlotIndex] = json_encode($newItemSlot);
-
-            DB::table('player')
-                ->where('id', $player->id)
-                ->update([
-                    'items_bag' => json_encode($itemsBag)
-                ]);
+            // Write item to Web Chest
+            \App\Models\WebChestItem::create([
+                'account_id' => $account->id,
+                'item_template_id' => (int)$shopItem->item_template_id,
+                'quantity' => 1,
+                'options' => is_array($shopItem->options) ? $shopItem->options : (json_decode($shopItem->options, true) ?? [])
+            ]);
 
             // Save purchase log
             WebShopPurchase::create([
@@ -167,7 +120,7 @@ class ShopController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Mua vật phẩm "' . $template->NAME . '" thành công! Vật phẩm đã được thêm vào hành trang của nhân vật ' . $player->name . '.',
+                'message' => 'Mua vật phẩm "' . $template->NAME . '" thành công! Vật phẩm đã được chuyển vào Rương đồ Web. Bạn có thể vào trang hồ sơ để rút vật phẩm vào game bất cứ lúc nào.',
                 'new_balance' => number_format($account->vnd - $shopItem->price_vnd)
             ]);
 
@@ -178,5 +131,22 @@ class ShopController extends Controller
                 'message' => 'Đã xảy ra lỗi trong quá trình xử lý: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Format item options to match game server internal format.
+     */
+    private function formatItemOptions($optionsArray)
+    {
+        if (empty($optionsArray)) {
+            return "[]";
+        }
+        $formatted = [];
+        foreach ($optionsArray as $opt) {
+            if (isset($opt[0])) {
+                $formatted[] = json_encode([(int)$opt[0], (int)$opt[1]]);
+            }
+        }
+        return json_encode($formatted);
     }
 }

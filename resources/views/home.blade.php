@@ -34,10 +34,10 @@
     </div>
     
     <div class="card" style="text-align: center;">
-        <div style="font-size: 3rem; margin-bottom: 15px; color: #4caf50;">💳</div>
-        <h3 style="margin-bottom: 10px;">NẠP TIỀN ĐẠT MỐC</h3>
-        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Hệ thống nạp tiền tích lũy nhận Gift Code nạp và đua top nạp thỏi vàng cực căng.</p>
-        <a href="{{ route('recharge') }}" class="btn" style="padding: 8px 16px; font-size: 0.9rem; background: #4caf50; box-shadow: 0 0 10px rgba(76,175,80,0.3);">NẠP TIỀN</a>
+        <div style="font-size: 3rem; margin-bottom: 15px; color: #ffd700;">🪙</div>
+        <h3 style="margin-bottom: 10px;">CỬA HÀNG VẬT PHẨM</h3>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Mua sắm thỏi vàng, hồng ngọc và các vật phẩm cày cuốc độc quyền cho tài khoản.</p>
+        <a href="{{ route('shop') }}" class="btn" style="padding: 8px 16px; font-size: 0.9rem; background: #ffd700; color: #000; font-weight: 700; box-shadow: 0 0 10px rgba(255,215,0,0.3);">VÀO CỬA HÀNG</a>
     </div>
 </div>
 

@@ -13,14 +13,15 @@
     </p>
 </div>
 
-<!-- Warning message -->
-<div class="card" style="margin-bottom: 30px; border-color: #f44336; background: rgba(244, 67, 54, 0.05); padding: 20px;">
-    <h4 style="color: #ff5252; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-        ⚠️ CẢNH BÁO QUAN TRỌNG:
+<!-- Info message -->
+<div class="card" style="margin-bottom: 30px; border-color: var(--primary); background: rgba(255, 107, 0, 0.05); padding: 20px;">
+    <h4 style="color: var(--primary); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+        📦 HỆ THỐNG RƯƠNG ĐỒ WEB (WEB CHEST) TỰ ĐỘNG:
     </h4>
-    <ul style="padding-left: 20px; color: #ff8a80; line-height: 1.6; font-size: 1.05rem;">
-        <li>Yêu cầu tài khoản game của bạn phải <strong>THOÁT GAME HOÀN TOÀN</strong> trước khi ấn mua hàng. Nếu đang online trong game mà mua hàng, vật phẩm sẽ bị ghi đè khi thoát game dẫn đến <strong>MẤT ĐỒ</strong>.</li>
-        <li>Hành trang nhân vật cần đảm bảo <strong>CÒN ĐỦ Ô TRỐNG</strong>. Nếu hành trang đã đầy mà cố tình nhận thì vật phẩm sẽ rơi mất, <strong>MẤT TỰ CHỊU TRÁCH NHIỆM</strong>.</li>
+    <ul style="padding-left: 20px; color: var(--text-muted); line-height: 1.6; font-size: 1.05rem;">
+        <li>Vật phẩm sau khi mua sẽ được chuyển vào <strong style="color: #fff;">Rương Đồ Web</strong> trên trang cá nhân (<a href="{{ route('dashboard') }}" style="color: var(--secondary); text-decoration: underline;">Hồ sơ</a>) của bạn.</li>
+        <li>Bạn có thể mua sắm bất cứ lúc nào, kể cả khi <strong>đang online chơi game</strong>.</li>
+        <li>Để nhận vật phẩm vào game: Hãy <strong>THOÁT GAME hoàn toàn</strong>, sau đó truy cập <a href="{{ route('dashboard') }}" style="color: var(--secondary); text-decoration: underline;">Hồ sơ</a> và bấm <strong>"Rút vào game"</strong> hoặc <strong>"Rút tất cả"</strong>.</li>
     </ul>
 </div>
 

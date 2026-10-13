@@ -23,7 +23,7 @@
     <!-- Spin Wheel Graphic Card -->
     <div class="card wheel-section" style="padding: 40px 20px;">
         <div style="background: rgba(255, 107, 0, 0.05); border: 1px dashed var(--primary); border-radius: 6px; padding: 15px; margin-bottom: 30px; font-size: 0.95rem; color: #ffb74d; text-align: center; width: 100%;">
-            ⚠️ <strong>Cảnh Báo:</strong> Hãy chắc chắn nhân vật game của bạn đã <strong>THOÁT GAME hoàn toàn</strong> và hành trang <strong>CÒN Ô TRỐNG</strong> trước khi quay! Nếu túi đầy, vật phẩm trúng sẽ bị mất!
+            📦 <strong>Rương Đồ Web:</strong> Vật phẩm quay trúng sẽ được gửi vào <a href="{{ route('dashboard') }}" style="color: var(--secondary); text-decoration: underline; font-weight: bold;">Rương Đồ Web</a>. Bạn có thể quay thoải mái khi đang online game, sau đó thoát game để rút đồ vào hành trang!
         </div>
 
         <!-- Wheel -->
@@ -240,7 +240,6 @@
         }
     });
 
-    // Modal control functions
     function showModal(message, type) {
         const modal = document.getElementById('result-modal');
         const text = document.getElementById('modal-reward-text');
@@ -248,7 +247,7 @@
         
         text.innerText = message;
         if (type === 'item') {
-            note.innerText = 'Vật phẩm đã được gửi vào túi đồ nhân vật. Đăng nhập game để kiểm tra.';
+            note.innerText = 'Vật phẩm đã được gửi vào Rương Đồ Web. Vui lòng vào trang Hồ Sơ để rút vật phẩm vào game.';
         } else {
             note.innerText = 'Phần thưởng số dư đã cộng trực tiếp vào tài khoản web của bạn.';
         }

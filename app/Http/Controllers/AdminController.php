@@ -14,6 +14,7 @@ use App\Models\SpinWheelItem;
 use App\Models\PaymentTransaction;
 use App\Models\Setting;
 use App\Models\WebAccSale;
+use App\Models\WebChestItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -24,16 +25,21 @@ class AdminController extends Controller
      */
     public function dashboard()
     {
+        $serverStats = $this->callGameApi('/api/server/stats', [], 'GET');
+
         $stats = [
             'total_users' => Account::count(),
-            'total_revenue' => PaymentTransaction::where('status', 'success')->sum('amount'),
+            'server_online' => $serverStats['success'] ?? false,
+            'online_count' => $serverStats['online_count'] ?? 0,
+            'used_memory_mb' => $serverStats['used_memory_mb'] ?? 0,
+            'max_memory_mb' => $serverStats['max_memory_mb'] ?? 0,
             'total_purchases' => WebShopPurchase::count(),
             'active_shop_items' => WebShopItem::where('is_active', 1)->count(),
             'total_giftcodes' => GiftCode::count(),
             'spin_wheel_items' => SpinWheelItem::count(),
         ];
 
-        return view('admin.dashboard', compact('stats'));
+        return view('admin.dashboard', compact('stats', 'serverStats'));
     }
 
     /**
@@ -83,23 +89,245 @@ class AdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Đã gỡ quyền Admin thành công.']);
     }
 
-    public function addVnd(Request $request, $id)
+    /**
+     * Call Game Server API (Port 14446)
+     */
+    private function callGameApi($endpoint, $data = [], $method = 'POST')
+    {
+        $token = "BIGK_ADMIN_TOKEN_2026";
+        $url = "http://127.0.0.1:14446" . $endpoint;
+        $data['token'] = $token;
+
+        try {
+            $ch = curl_init();
+            if ($method === 'POST') {
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            } else {
+                curl_setopt($ch, CURLOPT_URL, $url . '?' . http_build_query($data));
+            }
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 300);
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 800);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            $response = curl_exec($ch);
+            curl_close($ch);
+
+            if ($response) {
+                return json_decode($response, true);
+            }
+        } catch (\Exception $e) {
+            // Server offline or connection failed
+        }
+        return ['success' => false, 'message' => 'Game Server (port 14446) đang bảo trì hoặc chưa bật!'];
+    }
+
+    /**
+     * Realtime Buff Player (Thỏi Vàng, Hồng Ngọc, Item)
+     */
+    public function buffPlayer(Request $request, $id)
     {
         $request->validate([
-            'amount' => 'required|integer|min:1'
+            'ruby' => 'nullable|integer|min:0',
+            'thoi_vang' => 'nullable|integer|min:0',
+            'item_id' => 'nullable|integer|min:0',
+            'quantity' => 'nullable|integer|min:0'
         ]);
 
         $account = Account::findOrFail($id);
-        $currentVnd = $account->vnd ?? 0;
-        $account->update([
-            'vnd' => $currentVnd + $request->amount
+        $res = $this->callGameApi('/api/buff', [
+            'username' => $account->username,
+            'ruby' => (int) ($request->ruby ?? 0),
+            'thoi_vang' => (int) ($request->thoi_vang ?? 0),
+            'item_id' => (int) ($request->item_id ?? -1),
+            'quantity' => (int) ($request->quantity ?? 0),
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cộng ' . number_format($request->amount) . ' VND thành công.',
-            'new_vnd' => number_format($account->fresh()->vnd)
-        ]);
+        return response()->json($res);
+    }
+
+    /**
+     * Realtime Set Player Points (lên tới 50 TỶ HP/MP/Dame, 200 TỶ Sức Mạnh)
+     */
+    public function setPlayerPoints(Request $request, $id)
+    {
+        $account = Account::findOrFail($id);
+        $data = ['username' => $account->username];
+
+        if ($request->filled('hp')) $data['hp'] = (int) $request->hp;
+        if ($request->filled('mp')) $data['mp'] = (int) $request->mp;
+        if ($request->filled('dame')) $data['dame'] = (int) $request->dame;
+        if ($request->filled('def')) $data['def'] = (int) $request->def;
+        if ($request->filled('crit')) $data['crit'] = (int) $request->crit;
+        if ($request->filled('power')) $data['power'] = (int) $request->power;
+        if ($request->filled('tiem_nang')) $data['tiem_nang'] = (int) $request->tiem_nang;
+
+        $res = $this->callGameApi('/api/player/set-point', $data);
+        return response()->json($res);
+    }
+
+    /**
+     * Kick Player
+     */
+    public function kickPlayer($id)
+    {
+        $account = Account::findOrFail($id);
+        $res = $this->callGameApi('/api/player/kick', ['username' => $account->username]);
+        return response()->json($res);
+    }
+
+    /**
+     * Realtime Server Notice
+     */
+    public function sendServerNotify(Request $request)
+    {
+        $request->validate(['message' => 'required|string']);
+        $res = $this->callGameApi('/api/server/notify', ['message' => $request->message]);
+        return response()->json($res);
+    }
+
+    /**
+     * Realtime Maintenance Countdown
+     */
+    public function startMaintenance(Request $request)
+    {
+        $seconds = (int) ($request->seconds ?? 30);
+        $res = $this->callGameApi('/api/server/maintenance', ['seconds' => $seconds]);
+        return response()->json($res);
+    }
+
+    /**
+     * Get Realtime Server Stats
+     */
+    public function getServerStats()
+    {
+        $res = $this->callGameApi('/api/server/stats', [], 'GET');
+        return response()->json($res);
+    }
+
+    /**
+     * Realtime Boss Management
+     */
+    public function bosses()
+    {
+        $res = $this->callGameApi('/api/boss/list', [], 'GET');
+        $bosses = $res['bosses'] ?? [];
+        return view('admin.bosses', compact('bosses'));
+    }
+
+    public function bossSpawn(Request $request)
+    {
+        $request->validate(['boss_id' => 'required|integer']);
+        $res = $this->callGameApi('/api/boss/spawn', ['boss_id' => (int) $request->boss_id]);
+        return response()->json($res);
+    }
+
+    public function bossKill(Request $request)
+    {
+        $request->validate(['boss_id' => 'required|integer']);
+        $res = $this->callGameApi('/api/boss/kill', ['boss_id' => (int) $request->boss_id]);
+        return response()->json($res);
+    }
+
+    /**
+     * Realtime Item Inspector
+     */
+    public function playerItems($id)
+    {
+        $account = Account::findOrFail($id);
+        $res = $this->callGameApi('/api/player/items', ['username' => $account->username], 'GET');
+        return response()->json($res);
+    }
+
+    public function playerItemUpdate(Request $request, $id)
+    {
+        $account = Account::findOrFail($id);
+        $data = [
+            'username' => $account->username,
+            'type' => $request->input('type', 'bag'),
+            'index' => (int) $request->input('index', 0),
+            'quantity' => (int) $request->input('quantity', 1),
+            'options' => $request->input('options', [])
+        ];
+        $res = $this->callGameApi('/api/player/item/update', $data);
+        return response()->json($res);
+    }
+
+    /**
+     * Update EXP Server Config
+     */
+    public function serverConfigUpdate(Request $request)
+    {
+        $request->validate(['rate_exp' => 'required|integer|min:1|max:100']);
+        $res = $this->callGameApi('/api/server/config', ['rate_exp' => (int) $request->rate_exp]);
+        return response()->json($res);
+    }
+
+    /**
+     * Realtime Bot Management
+     */
+    public function bots()
+    {
+        $res = $this->callGameApi('/api/bot/status', [], 'GET');
+        $botCount = $res['bot_count'] ?? 0;
+        $chatEnabled = $res['chat_enabled'] ?? true;
+        $bots = $res['bots'] ?? [];
+
+        // Enrich bot map names using database
+        try {
+            $mapNames = DB::table('map_template')->pluck('NAME', 'id')->toArray();
+            foreach ($bots as &$b) {
+                $mid = $b['mapId'] ?? -1;
+                if (isset($mapNames[$mid])) {
+                    $b['mapName'] = $mapNames[$mid];
+                } elseif (empty($b['mapName'])) {
+                    $b['mapName'] = $mid >= 0 ? "Bản đồ #{$mid}" : "Chưa vào Map";
+                }
+            }
+        } catch (\Exception $e) {}
+
+        return view('admin.bots', compact('botCount', 'chatEnabled', 'bots'));
+    }
+
+    public function botSpawn(Request $request)
+    {
+        $count = (int) ($request->count ?? 5);
+        $res = $this->callGameApi('/api/bot/spawn', ['count' => $count]);
+        if (!isset($res['success']) && isset($res['status'])) {
+            $res['success'] = ($res['status'] === 'success');
+        }
+        return response()->json($res);
+    }
+
+    public function botStop()
+    {
+        $res = $this->callGameApi('/api/bot/stop');
+        return response()->json($res);
+    }
+
+    public function botToggleChat(Request $request)
+    {
+        $enabled = (bool) $request->enabled;
+        $res = $this->callGameApi('/api/bot/toggle-chat', ['enabled' => $enabled]);
+        return response()->json($res);
+    }
+
+    /**
+     * Realtime Combine Rate Management
+     */
+    public function combineRate()
+    {
+        $res = $this->callGameApi('/api/server/combine-rate', [], 'GET');
+        $rates = $res['rates'] ?? [80.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5];
+        return view('admin.combine_rate', compact('rates'));
+    }
+
+    public function combineRateUpdate(Request $request)
+    {
+        $rates = $request->input('rates', []);
+        $res = $this->callGameApi('/api/server/combine-rate', ['rates' => $rates]);
+        return response()->json($res);
     }
 
     /**
@@ -128,6 +356,23 @@ class AdminController extends Controller
         return response()->json($templates);
     }
 
+    public function searchOptionTemplates(Request $request)
+    {
+        $q = $request->q;
+        if (empty($q)) {
+            return response()->json([]);
+        }
+
+        $options = DB::table('item_option_template')
+            ->select('id', 'NAME')
+            ->where('id', '=', $q)
+            ->orWhere('NAME', 'like', "%{$q}%")
+            ->limit(25)
+            ->get();
+
+        return response()->json($options);
+    }
+
     public function shopStore(Request $request)
     {
         $request->validate([
@@ -135,7 +380,10 @@ class AdminController extends Controller
             'price_vnd' => 'required|integer|min:0',
             'quantity' => 'required|integer',
             'is_active' => 'required|boolean',
-            'image_override' => 'nullable|string'
+            'image_override' => 'nullable|string',
+            'options' => 'nullable|array',
+            'options.*.id' => 'required|integer',
+            'options.*.value' => 'required|integer',
         ]);
 
         // Verify if template exists
@@ -144,7 +392,25 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'message' => 'ID vật phẩm game không tồn tại.']);
         }
 
-        WebShopItem::create($request->all());
+        $options = [];
+        if ($request->has('options') && is_array($request->options)) {
+            foreach ($request->options as $opt) {
+                $optExists = DB::table('item_option_template')->where('id', $opt['id'])->exists();
+                if (!$optExists) {
+                    return response()->json(['success' => false, 'message' => 'Chỉ số ID ' . $opt['id'] . ' không tồn tại trong game.']);
+                }
+                $options[] = [(int)$opt['id'], (int)$opt['value']];
+            }
+        }
+
+        WebShopItem::create([
+            'item_template_id' => $request->item_template_id,
+            'price_vnd' => $request->price_vnd,
+            'quantity' => $request->quantity,
+            'is_active' => $request->is_active,
+            'image_override' => $request->image_override,
+            'options' => $options
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Thêm vật phẩm vào Web Shop thành công.']);
     }
@@ -155,11 +421,32 @@ class AdminController extends Controller
             'price_vnd' => 'required|integer|min:0',
             'quantity' => 'required|integer',
             'is_active' => 'required|boolean',
-            'image_override' => 'nullable|string'
+            'image_override' => 'nullable|string',
+            'options' => 'nullable|array',
+            'options.*.id' => 'required|integer',
+            'options.*.value' => 'required|integer',
         ]);
 
         $shopItem = WebShopItem::findOrFail($id);
-        $shopItem->update($request->all());
+
+        $options = [];
+        if ($request->has('options') && is_array($request->options)) {
+            foreach ($request->options as $opt) {
+                $optExists = DB::table('item_option_template')->where('id', $opt['id'])->exists();
+                if (!$optExists) {
+                    return response()->json(['success' => false, 'message' => 'Chỉ số ID ' . $opt['id'] . ' không tồn tại trong game.']);
+                }
+                $options[] = [(int)$opt['id'], (int)$opt['value']];
+            }
+        }
+
+        $shopItem->update([
+            'price_vnd' => $request->price_vnd,
+            'quantity' => $request->quantity,
+            'is_active' => $request->is_active,
+            'image_override' => $request->image_override,
+            'options' => $options
+        ]);
 
         return response()->json(['success' => true, 'message' => 'Cập nhật vật phẩm thành công.']);
     }
@@ -185,13 +472,17 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|unique:gift,name',
             'power' => 'required|integer|min:0',
-            'items' => 'required|array|min:1', // items format: [['id' => 123, 'quantity' => 10], ...]
+            'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.options' => 'nullable|array',
+            'items.*.options.*.id' => 'required|integer',
+            'items.*.options.*.value' => 'required|integer',
         ]);
 
         $itemIds = [];
         $itemQuantities = [];
+        $itemOptions = [];
 
         foreach ($request->items as $item) {
             // Verify if item_template exists
@@ -201,12 +492,25 @@ class AdminController extends Controller
             }
             $itemIds[] = (string)$item['id'];
             $itemQuantities[] = (string)$item['quantity'];
+
+            $optList = [];
+            if (isset($item['options']) && is_array($item['options'])) {
+                foreach ($item['options'] as $opt) {
+                    $optExists = DB::table('item_option_template')->where('id', $opt['id'])->exists();
+                    if (!$optExists) {
+                        return response()->json(['success' => false, 'message' => 'Chỉ số ID ' . $opt['id'] . ' không tồn tại trong game.']);
+                    }
+                    $optList[] = [(int)$opt['id'], (int)$opt['value']];
+                }
+            }
+            $itemOptions[] = $optList;
         }
 
         GiftCode::create([
             'name' => trim($request->name),
             'item_id' => $itemIds,
             'item_quantity' => $itemQuantities,
+            'item_options' => $itemOptions,
             'power' => (int)$request->power,
             'list_user' => []
         ]);
@@ -222,10 +526,14 @@ class AdminController extends Controller
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.options' => 'nullable|array',
+            'items.*.options.*.id' => 'required|integer',
+            'items.*.options.*.value' => 'required|integer',
         ]);
 
         $itemIds = [];
         $itemQuantities = [];
+        $itemOptions = [];
 
         foreach ($request->items as $item) {
             // Verify if item_template exists
@@ -235,6 +543,18 @@ class AdminController extends Controller
             }
             $itemIds[] = (string)$item['id'];
             $itemQuantities[] = (string)$item['quantity'];
+
+            $optList = [];
+            if (isset($item['options']) && is_array($item['options'])) {
+                foreach ($item['options'] as $opt) {
+                    $optExists = DB::table('item_option_template')->where('id', $opt['id'])->exists();
+                    if (!$optExists) {
+                        return response()->json(['success' => false, 'message' => 'Chỉ số ID ' . $opt['id'] . ' không tồn tại trong game.']);
+                    }
+                    $optList[] = [(int)$opt['id'], (int)$opt['value']];
+                }
+            }
+            $itemOptions[] = $optList;
         }
 
         $giftcode = GiftCode::findOrFail($id);
@@ -242,6 +562,7 @@ class AdminController extends Controller
             'name' => trim($request->name),
             'item_id' => $itemIds,
             'item_quantity' => $itemQuantities,
+            'item_options' => $itemOptions,
             'power' => (int)$request->power,
         ]);
 
@@ -258,17 +579,49 @@ class AdminController extends Controller
     public function itemsLookup(Request $request)
     {
         $search = $request->input('search');
-        $query = DB::table('item_template');
-
-        if ($search) {
-            $query->where('id', '=', $search)
-                  ->orWhere('NAME', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+        $type = $request->input('type');
+        $gender = $request->input('gender');
+        $perPage = (int) $request->input('per_page', 48);
+        if (!in_array($perPage, [24, 48, 96, 120])) {
+            $perPage = 48;
         }
 
-        $items = $query->orderBy('id', 'asc')->paginate(30);
+        $query = DB::table('item_template');
 
-        return view('admin.items_lookup', compact('items', 'search'));
+        if ($search !== null && $search !== '') {
+            $query->where(function ($q) use ($search) {
+                if (is_numeric($search)) {
+                    $q->where('id', '=', (int)$search);
+                }
+                $q->orWhere('NAME', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if ($type !== null && $type !== '') {
+            $query->where('TYPE', '=', (int)$type);
+        }
+
+        if ($gender !== null && $gender !== '' && $gender !== '-1') {
+            $query->where('gender', '=', (int)$gender);
+        }
+
+        $totalItems = DB::table('item_template')->count();
+        $items = $query->orderBy('id', 'asc')->paginate($perPage);
+
+        // Lấy danh sách Type tags kèm số lượng
+        $itemTypes = DB::table('type_item')
+            ->select('type_item.id', 'type_item.NAME')
+            ->orderBy('type_item.id', 'asc')
+            ->get();
+
+        $typeCounts = DB::table('item_template')
+            ->select('TYPE', DB::raw('count(*) as total'))
+            ->groupBy('TYPE')
+            ->pluck('total', 'TYPE')
+            ->toArray();
+
+        return view('admin.items_lookup', compact('items', 'search', 'type', 'gender', 'perPage', 'totalItems', 'itemTypes', 'typeCounts'));
     }
 
     /**
@@ -666,5 +1019,376 @@ class AdminController extends Controller
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Có lỗi xảy ra: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * View all Web Chest items.
+     */
+    public function webChestIndex(Request $request)
+    {
+        $search = $request->input('search');
+        
+        $query = WebChestItem::with('account');
+        if ($search) {
+            $query->whereHas('account', function($q) use ($search) {
+                $q->where('username', 'like', "%{$search}%");
+            });
+        }
+        
+        $chestItems = $query->orderBy('created_at', 'desc')->paginate(15);
+        return view('admin.web_chest', compact('chestItems', 'search'));
+    }
+
+    /**
+     * Send an item directly to a user's web chest.
+     */
+    public function webChestSend(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|string',
+            'item_template_id' => 'required|integer',
+            'quantity' => 'required|integer|min:1',
+            'options' => 'nullable|array',
+            'options.*.id' => 'required|integer',
+            'options.*.value' => 'required|integer',
+        ]);
+
+        $account = Account::where('username', $request->username)->first();
+        if (!$account) {
+            return response()->json(['success' => false, 'message' => 'Tài khoản không tồn tại.']);
+        }
+
+        // Verify if template exists
+        $exists = DB::table('item_template')->where('id', $request->item_template_id)->exists();
+        if (!$exists) {
+            return response()->json(['success' => false, 'message' => 'ID vật phẩm game không tồn tại.']);
+        }
+
+        $options = [];
+        if ($request->has('options') && is_array($request->options)) {
+            foreach ($request->options as $opt) {
+                $optExists = DB::table('item_option_template')->where('id', $opt['id'])->exists();
+                if (!$optExists) {
+                    return response()->json(['success' => false, 'message' => 'Chỉ số ID ' . $opt['id'] . ' không tồn tại trong game.']);
+                }
+                $options[] = [(int)$opt['id'], (int)$opt['value']];
+            }
+        }
+
+        WebChestItem::create([
+            'account_id' => $account->id,
+            'item_template_id' => $request->item_template_id,
+            'quantity' => $request->quantity,
+            'options' => $options
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Đã gửi vật phẩm vào Rương Web của tài khoản "' . $request->username . '" thành công!']);
+    }
+
+    /**
+     * Delete an item from a user's web chest.
+     */
+    public function webChestDelete($id)
+    {
+        $item = WebChestItem::findOrFail($id);
+        $itemName = $item->template->NAME ?? 'Vật phẩm';
+        $item->delete();
+        return response()->json(['success' => true, 'message' => 'Đã xóa vật phẩm "' . $itemName . '" khỏi Rương Web thành công.']);
+    }
+
+    /**
+     * Nhiệm Vụ Bò Mộng & Thành Tựu
+     */
+    public function achievements()
+    {
+        $achievements = DB::table('archive_template')->orderBy('id', 'asc')->get();
+        return view('admin.achievements', compact('achievements'));
+    }
+
+    public function achievementStore(Request $request)
+    {
+        $request->validate([
+            'info1' => 'required|string',
+            'info2' => 'required|string',
+            'money' => 'required|integer|min:0',
+        ]);
+
+        $maxId = DB::table('archive_template')->max('id');
+        $newId = ($maxId !== null) ? $maxId + 1 : 0;
+
+        DB::table('archive_template')->insert([
+            'id' => $newId,
+            'info1' => $request->info1,
+            'info2' => $request->info2,
+            'money' => (int) $request->money,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Thêm mốc thành tựu mới thành công!']);
+    }
+
+    public function achievementUpdate(Request $request, $id)
+    {
+        $request->validate([
+            'info1' => 'required|string',
+            'info2' => 'required|string',
+            'money' => 'required|integer|min:0',
+        ]);
+
+        DB::table('archive_template')->where('id', $id)->update([
+            'info1' => $request->info1,
+            'info2' => $request->info2,
+            'money' => (int) $request->money,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Cập nhật mốc thành tựu thành công!']);
+    }
+
+    public function achievementDelete($id)
+    {
+        DB::table('archive_template')->where('id', $id)->delete();
+        return response()->json(['success' => true, 'message' => 'Đã xóa mốc thành tựu thành công!']);
+    }
+
+    /**
+     * Quản Lý Rơi Đồ Quái (Mob Drops)
+     */
+    public function drops(Request $request)
+    {
+        $mobId = $request->input('mob_id');
+        $mapId = $request->input('map_id');
+
+        $query = DB::table('mob_drop')
+            ->leftJoin('item_template', 'mob_drop.item_id', '=', 'item_template.id')
+            ->leftJoin('map_template', 'mob_drop.map_id', '=', 'map_template.id')
+            ->select('mob_drop.*', 'item_template.NAME as item_name', 'item_template.icon_id', 'map_template.name as map_name');
+
+        if ($mobId !== null && $mobId !== '') {
+            $query->where('mob_drop.mob_id', (int) $mobId);
+        }
+        if ($mapId !== null && $mapId !== '') {
+            $query->where('mob_drop.map_id', (int) $mapId);
+        }
+
+        $drops = $query->orderBy('mob_drop.id', 'desc')->paginate(20);
+        $maps = DB::table('map_template')->select('id', 'name')->orderBy('id', 'asc')->get();
+
+        return view('admin.drops', compact('drops', 'maps', 'mobId', 'mapId'));
+    }
+
+    public function dropStore(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|integer',
+            'rate' => 'required|numeric|min:0.01|max:100',
+            'quantity_min' => 'required|integer|min:1',
+            'quantity_max' => 'required|integer|min:1',
+        ]);
+
+        $exists = DB::table('item_template')->where('id', $request->item_id)->exists();
+        if (!$exists) {
+            return response()->json(['success' => false, 'message' => 'ID vật phẩm không tồn tại!']);
+        }
+
+        DB::table('mob_drop')->insert([
+            'mob_id' => (int) ($request->mob_id ?? -1),
+            'map_id' => (int) ($request->map_id ?? -1),
+            'item_id' => (int) $request->item_id,
+            'quantity_min' => (int) $request->quantity_min,
+            'quantity_max' => (int) $request->quantity_max,
+            'rate' => (float) $request->rate,
+            'is_active' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Thêm cấu hình rơi đồ quái thành công!']);
+    }
+
+    public function dropUpdate(Request $request, $id)
+    {
+        $request->validate([
+            'rate' => 'required|numeric|min:0.01|max:100',
+            'quantity_min' => 'required|integer|min:1',
+            'quantity_max' => 'required|integer|min:1',
+        ]);
+
+        DB::table('mob_drop')->where('id', $id)->update([
+            'rate' => (float) $request->rate,
+            'quantity_min' => (int) $request->quantity_min,
+            'quantity_max' => (int) $request->quantity_max,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Cập nhật cấu hình rơi đồ thành công!']);
+    }
+
+    public function dropToggle($id)
+    {
+        $drop = DB::table('mob_drop')->where('id', $id)->first();
+        if (!$drop) {
+            return response()->json(['success' => false, 'message' => 'Dòng cấu hình không tồn tại!']);
+        }
+
+        $newStatus = $drop->is_active ? 0 : 1;
+        DB::table('mob_drop')->where('id', $id)->update(['is_active' => $newStatus, 'updated_at' => now()]);
+
+        return response()->json(['success' => true, 'message' => ($newStatus ? 'Đã kích hoạt' : 'Đã tạm dừng') . ' dòng rơi đồ!']);
+    }
+
+    public function dropDelete($id)
+    {
+        DB::table('mob_drop')->where('id', $id)->delete();
+        return response()->json(['success' => true, 'message' => 'Đã xóa dòng cấu hình rơi đồ!']);
+    }
+
+    /**
+     * Visual Map Editor 2D (HTML5 Canvas)
+     */
+    public function mapEditor(Request $request)
+    {
+        $maps = DB::table('map_template')->select('id', DB::raw('COALESCE(NAME, name) as name'))->orderBy('id', 'asc')->get();
+        return view('admin.map_editor', compact('maps'));
+    }
+
+    public function mapEditorData(Request $request)
+    {
+        try {
+            $mapId = (int) $request->input('map_id', 0);
+            $map = DB::table('map_template')->where('id', $mapId)->first();
+            if (!$map) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy map!']);
+            }
+
+            $mapName = $map->NAME ?? $map->name ?? ("Bản đồ #" . $mapId);
+
+            // 1. Parse NPCs
+            $npcsRaw = [];
+            if (!empty($map->npcs)) {
+                $npcsRaw = json_decode($map->npcs, true) ?? [];
+            }
+            $npcs = [];
+            foreach ($npcsRaw as $n) {
+                if (is_array($n) && count($n) >= 3) {
+                    $npcs[] = [(int)$n[0], (int)$n[1], (int)$n[2]];
+                }
+            }
+
+            // 2. Parse Mobs
+            $mobsRaw = [];
+            if (!empty($map->mobs)) {
+                $mobsRaw = json_decode($map->mobs, true) ?? [];
+            }
+            $mobs = [];
+            foreach ($mobsRaw as $m) {
+                if (is_string($m)) {
+                    $m = json_decode($m, true);
+                }
+                if (is_array($m) && count($m) >= 5) {
+                    $mobs[] = [
+                        'id' => (int)$m[0],
+                        'level' => (int)$m[1],
+                        'hp' => (int)$m[2],
+                        'x' => (int)$m[3],
+                        'y' => (int)$m[4]
+                    ];
+                }
+            }
+
+            // 3. Parse Waypoints
+            $waypoints = [];
+            if (!empty($map->waypoints)) {
+                $cleanedWp = str_replace(['["[', ']"]', '","'], ['[[', ']]', ','], $map->waypoints);
+                $decoded = json_decode($cleanedWp, true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $w) {
+                        if (is_string($w)) {
+                            $w = json_decode($w, true);
+                        }
+                        if (is_array($w) && count($w) >= 10) {
+                            $waypoints[] = [
+                                'name' => (string) $w[0],
+                                'minX' => (int) $w[1],
+                                'minY' => (int) $w[2],
+                                'maxX' => (int) $w[3],
+                                'maxY' => (int) $w[4],
+                                'goMap' => (int) $w[7],
+                                'goX' => (int) $w[8],
+                                'goY' => (int) $w[9]
+                            ];
+                        }
+                    }
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'map' => [
+                    'id' => $map->id,
+                    'name' => $mapName,
+                    'npcs' => $npcs,
+                    'mobs' => $mobs,
+                    'waypoints' => $waypoints
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi xử lý dữ liệu map: ' . $e->getMessage()]);
+        }
+    }
+
+    public function mapEditorSave(Request $request)
+    {
+        try {
+            $mapId = (int) $request->input('map_id');
+            $npcs = $request->input('npcs', []);
+            $mobs = $request->input('mobs', []);
+
+            // Encode mobs back to format ["[\"mobId\",level,hp,x,y]", ...]
+            $mobsFormatted = [];
+            foreach ($mobs as $m) {
+                $mobsFormatted[] = json_encode([
+                    (int)$m['id'],
+                    (int)($m['level'] ?? 1),
+                    (int)($m['hp'] ?? 100),
+                    (int)$m['x'],
+                    (int)$m['y']
+                ]);
+            }
+
+            DB::table('map_template')->where('id', $mapId)->update([
+                'npcs' => json_encode($npcs),
+                'mobs' => json_encode($mobsFormatted),
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Lưu tọa độ thực thể bản đồ vào Database thành công!']);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi lưu bản đồ: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Serve Item Icon PNG directly with cache and fallback
+     */
+    public function getItemIcon($id)
+    {
+        $id = (int) $id;
+        $scales = ['x4', 'x3', 'x2', 'x1'];
+        $baseDir = "D:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/icon";
+
+        foreach ($scales as $s) {
+            $path = "{$baseDir}/{$s}/{$id}.png";
+            if (file_exists($path)) {
+                return response()->file($path, [
+                    'Content-Type' => 'image/png',
+                    'Cache-Control' => 'public, max-age=604800'
+                ]);
+            }
+        }
+
+        $fallback = public_path('images/no_image.png');
+        if (file_exists($fallback)) {
+            return response()->file($fallback, ['Content-Type' => 'image/png']);
+        }
+
+        abort(404);
     }
 }

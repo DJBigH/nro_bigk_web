@@ -50,7 +50,7 @@
             </div>
 
             <div style="margin-top: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <a href="{{ route('recharge') }}" class="btn" style="text-align: center;">NẠP THẺ</a>
+                <a href="{{ route('shop') }}" class="btn" style="text-align: center;">CỬA HÀNG</a>
                 <a href="{{ route('acc_sales.history') }}" class="btn btn-secondary" style="text-align: center;">LỊCH SỬ MUA ACC</a>
             </div>
         </div>
@@ -138,6 +138,76 @@
                             </div>
 
                         </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        <!-- Web Chest Card -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <h2 style="color: var(--primary); font-family: 'Orbitron', sans-serif; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    📦 RƯƠNG ĐỒ WEB
+                </h2>
+                @if(!$chestItems->isEmpty())
+                    <button type="button" id="withdraw-all-btn" class="btn btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
+                        RÚT TẤT CẢ
+                    </button>
+                @endif
+            </div>
+
+            <div style="background: rgba(255, 107, 0, 0.05); border: 1px dashed var(--primary); border-radius: 6px; padding: 12px; margin-bottom: 20px; font-size: 0.85rem; color: #ffb74d;">
+                ⚠️ <strong>Lưu ý:</strong> Cần <strong>THOÁT GAME hoàn toàn</strong> trước khi rút vật phẩm. Hành trang cần có đủ ô trống.
+            </div>
+
+            @if($chestItems->isEmpty())
+                <div style="text-align: center; padding: 30px 0;">
+                    <p style="color: var(--text-muted); font-size: 0.95rem;">Rương đồ web của bạn đang trống.</p>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Mua sắm tại <a href="{{ route('shop') }}" style="color: var(--secondary); text-decoration: underline;">Web Shop</a> hoặc quay <a href="{{ route('spin') }}" style="color: var(--secondary); text-decoration: underline;">Vòng quay</a> để nhận vật phẩm.</p>
+                </div>
+            @else
+                <div style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                    @foreach($chestItems as $item)
+                        @php
+                            $tpl = $item->template;
+                        @endphp
+                        @if($tpl)
+                            <div style="background: rgba(255,255,255,0.01); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                                    <div style="width: 45px; height: 45px; border-radius: 6px; background: rgba(255,107,0,0.08); border: 1px solid rgba(255,107,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; position: relative;">
+                                        📦
+                                        <span style="position: absolute; bottom: -2px; right: -2px; background: var(--primary); color: #fff; font-size: 0.7rem; font-weight: bold; padding: 1px 4px; border-radius: 4px; font-family: 'Orbitron', sans-serif;">
+                                            x{{ $item->quantity }}
+                                        </span>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <h4 style="color: #fff; margin: 0 0 3px 0; font-size: 0.95rem;">{{ $tpl->NAME }}</h4>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                            ID Template: <span style="color: var(--secondary);">{{ $tpl->id }}</span>
+                                        </div>
+                                        @if(!empty($item->options))
+                                            <div style="margin-top: 5px; font-size: 0.75rem; color: #ffb74d; display: flex; flex-wrap: wrap; gap: 5px;">
+                                                @foreach($item->options as $opt)
+                                                    @php
+                                                        $optTpl = DB::table('item_option_template')->where('id', $opt[0] ?? null)->first();
+                                                        $optName = $optTpl ? str_replace('#', $opt[1] ?? '', $optTpl->NAME) : 'Chỉ số ' . ($opt[0] ?? '');
+                                                    @endphp
+                                                    <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255, 183, 77, 0.2); border-radius: 4px; padding: 2px 6px;">
+                                                        {{ $optName }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <button type="button" class="btn btn-secondary withdraw-single-btn" data-id="{{ $item->id }}" style="font-size: 0.8rem; padding: 6px 12px;">
+                                        Rút game
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
                     @endforeach
                 </div>
             @endif
@@ -350,6 +420,65 @@
                     window.showAlert('Lỗi kết nối. Vui lòng thử lại.', 'error');
                     claimAllBtn.disabled = false;
                     claimAllBtn.innerText = 'NHẬN TẤT CẢ CODES';
+                }
+            });
+        }
+
+        // Single Withdraw Handler
+        const withdrawSingleBtns = document.querySelectorAll('.withdraw-single-btn');
+        withdrawSingleBtns.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                btn.disabled = true;
+                btn.innerText = 'Đang rút...';
+
+                try {
+                    const response = await window.csrfFetch(`/web-chest/withdraw/${id}`, {
+                        method: 'POST'
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        window.showAlert(result.message, 'success');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        window.showAlert(result.message, 'error');
+                        btn.disabled = false;
+                        btn.innerText = 'Rút game';
+                    }
+                } catch (error) {
+                    window.showAlert('Lỗi kết nối. Vui lòng thử lại.', 'error');
+                    btn.disabled = false;
+                    btn.innerText = 'Rút game';
+                }
+            });
+        });
+
+        // Withdraw All Handler
+        const withdrawAllBtn = document.getElementById('withdraw-all-btn');
+        if (withdrawAllBtn) {
+            withdrawAllBtn.addEventListener('click', async () => {
+                withdrawAllBtn.disabled = true;
+                withdrawAllBtn.innerText = 'Đang rút...';
+
+                try {
+                    const response = await window.csrfFetch('{{ route("web_chest.withdraw_all") }}', {
+                        method: 'POST'
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        window.showAlert(result.message, 'success');
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        window.showAlert(result.message, 'error');
+                        withdrawAllBtn.disabled = false;
+                        withdrawAllBtn.innerText = 'RÚT TẤT CẢ';
+                    }
+                } catch (error) {
+                    window.showAlert('Lỗi kết nối. Vui lòng thử lại.', 'error');
+                    withdrawAllBtn.disabled = false;
+                    withdrawAllBtn.innerText = 'RÚT TẤT CẢ';
                 }
             });
         }

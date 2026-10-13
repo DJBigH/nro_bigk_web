@@ -17,6 +17,7 @@ class GiftCode extends Model
         'name',
         'item_id',
         'item_quantity',
+        'item_options',
         'power',
         'list_user',
     ];
@@ -24,6 +25,7 @@ class GiftCode extends Model
     protected $casts = [
         'item_id' => 'array',
         'item_quantity' => 'array',
+        'item_options' => 'array',
         'list_user' => 'array',
     ];
 }

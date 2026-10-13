@@ -56,7 +56,6 @@
                 @auth
                     <li><a href="{{ route('shop') }}" class="nav-link {{ Route::is('shop') ? 'active' : '' }}">Cửa Hàng</a></li>
                     <li><a href="{{ route('spin') }}" class="nav-link {{ Route::is('spin') ? 'active' : '' }}">Vòng Quay</a></li>
-                    <li><a href="{{ route('recharge') }}" class="nav-link {{ Route::is('recharge') ? 'active' : '' }}">Nạp Thẻ</a></li>
                     <li><a href="{{ route('dashboard') }}" class="nav-link nav-btn {{ Route::is('dashboard') ? 'active' : '' }}">Tài Khoản</a></li>
                     
                     @if(Auth::user()->is_admin == 1)

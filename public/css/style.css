@@ -1,19 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Orbitron:wght@800;900&display=swap');
 
 :root {
-    --bg-main: #06060c;
-    --bg-card: rgba(18, 18, 30, 0.85);
-    --bg-darker: #020205;
+    --bg-main: #0a0e17;
+    --bg-card: rgba(17, 24, 39, 0.95);
+    --bg-darker: #050811;
     --primary: #ff6b00;
-    --primary-glow: rgba(255, 107, 0, 0.35);
+    --primary-glow: rgba(255, 107, 0, 0.25);
     --secondary: #ffd700;
-    --secondary-glow: rgba(255, 215, 0, 0.35);
-    --text-main: #e2e8f0;
-    --text-muted: #8a8d9b;
-    --text-primary: #ff6b00;
-    --border-color: rgba(255, 107, 0, 0.2);
-    --border-glow: 0 0 10px rgba(255, 107, 0, 0.1);
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --secondary-glow: rgba(255, 215, 0, 0.25);
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-primary: #ff7a1a;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-glow: 0 0 15px rgba(255, 107, 0, 0.12);
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-brand: 'Orbitron', sans-serif;
 }
 
 * {
@@ -25,23 +28,28 @@
 body {
     background-color: var(--bg-main);
     color: var(--text-main);
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 1.15rem;
-    font-weight: 500;
-    line-height: 1.5;
+    font-family: var(--font-main);
+    font-size: 0.95rem;
+    font-weight: 400;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
     background-image: 
-        radial-gradient(circle at 10% 20%, rgba(255, 107, 0, 0.05) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(255, 215, 0, 0.03) 0%, transparent 40%);
+        radial-gradient(circle at 15% 15%, rgba(255, 107, 0, 0.04) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(0, 229, 255, 0.03) 0%, transparent 45%);
     background-attachment: fixed;
     overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Orbitron', sans-serif;
+    font-family: var(--font-main);
     font-weight: 700;
-    letter-spacing: 1px;
-    color: #fff;
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    line-height: 1.3;
+}
+
+.font-mono, [style*="font-family: 'Orbitron'"], [style*='font-family: "Orbitron"'] {
+    font-family: var(--font-mono) !important;
 }
 
 /* Custom Scrollbar */
@@ -116,12 +124,11 @@ header {
 .nav-link {
     color: var(--text-main);
     text-decoration: none;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 6px 8px;
-    border-radius: 4px;
+    font-family: var(--font-main);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 6px;
     border: 1px solid transparent;
     transition: var(--transition);
     white-space: nowrap;
@@ -129,20 +136,20 @@ header {
 
 .nav-link:hover, .nav-link.active {
     color: var(--primary);
-    border-color: var(--primary);
-    background: rgba(255, 107, 0, 0.05);
-    box-shadow: 0 0 8px rgba(255, 107, 0, 0.15);
+    border-color: rgba(255, 107, 0, 0.4);
+    background: rgba(255, 107, 0, 0.08);
+    box-shadow: 0 0 12px rgba(255, 107, 0, 0.15);
 }
 
 .nav-btn {
     background: linear-gradient(135deg, var(--primary) 0%, #d45900 100%);
     color: #fff;
     border: none;
-    padding: 6px 12px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.85rem;
+    padding: 8px 16px;
+    font-family: var(--font-main);
+    font-size: 0.9rem;
     font-weight: 700;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     box-shadow: 0 0 12px var(--primary-glow);
     text-decoration: none;
@@ -231,24 +238,23 @@ header {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px 28px;
+    padding: 10px 22px;
     background: linear-gradient(135deg, var(--primary) 0%, #cc5500 100%);
     color: #fff;
     border: none;
-    border-radius: 6px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.05rem;
+    border-radius: 8px;
+    font-family: var(--font-main);
+    font-size: 0.95rem;
     font-weight: 700;
-    text-transform: uppercase;
     text-decoration: none;
     cursor: pointer;
-    box-shadow: 0 0 15px var(--primary-glow);
+    box-shadow: 0 4px 14px var(--primary-glow);
     transition: var(--transition);
 }
 
 .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 25px rgba(255, 107, 0, 0.6);
+    box-shadow: 0 6px 20px rgba(255, 107, 0, 0.5);
 }
 
 .btn:disabled {
@@ -258,22 +264,25 @@ header {
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, var(--secondary) 0%, #ccaa00 100%);
-    color: #000;
-    box-shadow: 0 0 15px var(--secondary-glow);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
 }
 
 .btn-secondary:hover {
-    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #ff3333 0%, #990000 100%);
-    box-shadow: 0 0 15px rgba(255, 51, 51, 0.3);
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
 }
 
 .btn-danger:hover {
-    box-shadow: 0 0 25px rgba(255, 51, 51, 0.6);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
 }
 
 /* Tables */
@@ -284,56 +293,62 @@ table {
 }
 
 th {
-    background: rgba(255, 107, 0, 0.1);
-    color: var(--primary);
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.03);
+    color: #94a3b8;
+    font-family: var(--font-main);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     text-align: left;
     padding: 12px 16px;
-    border-bottom: 2px solid var(--primary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 td {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 107, 0, 0.1);
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.92rem;
 }
 
 tr:hover td {
-    background: rgba(255, 107, 0, 0.02);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 /* Badges */
 .badge {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-family: 'Orbitron', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: var(--font-main);
     font-size: 0.8rem;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .badge-primary {
     background: rgba(255, 107, 0, 0.15);
     color: var(--primary);
-    border: 1px solid var(--primary);
+    border: 1px solid rgba(255, 107, 0, 0.3);
 }
 
 .badge-secondary {
     background: rgba(255, 215, 0, 0.15);
     color: var(--secondary);
-    border: 1px solid var(--secondary);
+    border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 .badge-success {
-    background: rgba(76, 175, 80, 0.15);
-    color: #4caf50;
-    border: 1px solid #4caf50;
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .badge-danger {
-    background: rgba(244, 67, 54, 0.15);
-    color: #f44336;
-    border: 1px solid #f44336;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 /* Forms */
@@ -343,23 +358,31 @@ tr:hover td {
 
 .form-label {
     display: block;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.95rem;
-    color: #fff;
+    font-family: var(--font-main);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #e2e8f0;
     margin-bottom: 8px;
-    text-transform: uppercase;
 }
 
 .form-input {
     width: 100%;
-    background: rgba(2, 2, 5, 0.8);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
     color: #fff;
-    padding: 12px 16px;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 1.1rem;
+    padding: 10px 14px;
+    font-family: var(--font-main);
+    font-size: 0.95rem;
     transition: var(--transition);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.2);
+    background: rgba(15, 23, 42, 1);
+}
 }
 
 .form-input:focus {
@@ -548,20 +571,20 @@ tr:hover td {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 16px;
-    color: var(--text-main);
+    padding: 10px 14px;
+    color: #cbd5e1;
     text-decoration: none;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 700;
-    border-radius: 6px;
+    font-family: var(--font-main);
+    font-size: 0.88rem;
+    font-weight: 600;
+    border-radius: 8px;
     transition: var(--transition);
 }
 
 .admin-menu-link:hover, .admin-menu-link.active {
-    background: rgba(255, 107, 0, 0.1);
-    color: var(--primary);
-    border-left: 4px solid var(--primary);
+    background: rgba(255, 107, 0, 0.12);
+    color: #ff9800;
+    border-left: 3px solid #ff9800;
 }
 
 /* Dashboard Summary Cards */

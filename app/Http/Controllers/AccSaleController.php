@@ -19,7 +19,7 @@ class AccSaleController extends Controller
      */
     public function index(Request $request)
     {
-        $query = WebAccSale::where('status', 'selling');
+        $query = WebAccSale::with('seller')->where('status', 'selling');
 
         // Filter by price
         if ($request->has('price_range')) {
@@ -349,12 +349,14 @@ class AccSaleController extends Controller
         $account = Auth::user();
 
         // Accounts purchased by this user
-        $purchases = WebAccSale::where('buyer_id', $account->id)
+        $purchases = WebAccSale::with('seller')
+            ->where('buyer_id', $account->id)
             ->orderBy('updated_at', 'desc')
             ->get();
 
         // Accounts listed by this user
-        $sales = WebAccSale::where('seller_id', $account->id)
+        $sales = WebAccSale::with('buyer')
+            ->where('seller_id', $account->id)
             ->orderBy('created_at', 'desc')
             ->get();
 

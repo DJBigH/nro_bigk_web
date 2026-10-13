@@ -20,6 +20,7 @@
                     <th>ID Item</th>
                     <th style="text-align: center;">Ảnh/Icon</th>
                     <th>Tên Vật Phẩm</th>
+                    <th>Chỉ Số (Stats)</th>
                     <th>Giá VND</th>
                     <th>Số Lượng</th>
                     <th>Trạng Thái</th>
@@ -30,6 +31,7 @@
                 @foreach($shopItems as $item)
                     @php
                         $tpl = $item->template;
+                        $opts = is_array($item->options) ? $item->options : (json_decode($item->options, true) ?? []);
                     @endphp
                     <tr>
                         <td style="font-family: 'Orbitron', sans-serif;">{{ $item->id }}</td>
@@ -46,6 +48,21 @@
                                 {{ $tpl->NAME }}
                             @else
                                 <span style="color: var(--text-muted); font-style: italic;">Không xác định</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if(count($opts) > 0)
+                                @foreach($opts as $opt)
+                                    @php
+                                        $optTpl = DB::table('item_option_template')->where('id', $opt[0])->first();
+                                    @endphp
+                                    <div style="font-size: 0.85rem; margin-bottom: 3px; display: flex; align-items: center; gap: 4px;">
+                                        <span style="color: var(--secondary); font-weight: 700; font-family: 'Orbitron', sans-serif;">[{{ $opt[0] }}]</span>
+                                        <span style="color: #fff;">{{ $optTpl ? str_replace('#', $opt[1], $optTpl->NAME) : 'Chỉ số ' . $opt[0] . ' (x' . $opt[1] . ')' }}</span>
+                                    </div>
+                                @endforeach
+                            @else
+                                <span style="color: var(--text-muted); font-style: italic; font-size: 0.85rem;">Không có</span>
                             @endif
                         </td>
                         <td style="font-family: 'Orbitron', sans-serif; font-weight: 700; color: var(--secondary);">
@@ -134,6 +151,27 @@
                 </select>
             </div>
 
+            <!-- Options Editor Section -->
+            <div style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; margin-bottom: 20px; background: rgba(255,107,0,0.02);">
+                <label class="form-label" style="color: var(--secondary); margin-bottom: 8px; display: block;">Tra Cứu & Thêm Chỉ Số (Options/Stats)</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                    <input type="text" id="search-option-query" class="form-input" style="padding: 8px 12px; font-size: 0.95rem;" placeholder="Nhập ID hoặc tên chỉ số (Ví dụ: HP, Sức đánh)...">
+                    <button type="button" class="btn" style="padding: 8px 16px; font-size: 0.9rem;" onclick="searchOptionTemplates()">TÌM Chỉ Số</button>
+                </div>
+                <!-- Search results list for options -->
+                <div id="search-options-results" style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 6px; padding: 5px; display: none; border: 1px solid rgba(255,107,0,0.15); margin-bottom: 10px;">
+                </div>
+
+                <label class="form-label" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; margin-top: 10px;">
+                    Danh sách chỉ số đã gán
+                    <button type="button" class="btn" style="padding: 4px 10px; font-size: 0.8rem;" onclick="addEmptyOptionRow()">+ Thêm chỉ số trống</button>
+                </label>
+                
+                <div id="options-container" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                    <!-- Option rows will be injected here -->
+                </div>
+            </div>
+
             <button type="submit" id="modal-submit-btn" class="btn" style="width: 100%;">
                 XÁC NHẬN
             </button>
@@ -145,6 +183,7 @@
 @section('scripts')
 <script>
     let mode = 'add'; // 'add' or 'edit'
+    let optionRowCount = 0;
 
     // Template query search AJAX
     async function searchItemTemplates() {
@@ -177,6 +216,138 @@
         }
     }
 
+    // Option template query search AJAX
+    async function searchOptionTemplates() {
+        const query = document.getElementById('search-option-query').value.trim();
+        const resultsEl = document.getElementById('search-options-results');
+        
+        if (query === '') {
+            window.showAlert('Vui lòng nhập từ khóa tìm kiếm chỉ số.', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`{{ route('admin.shop.search-options') }}?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            resultsEl.innerHTML = '';
+            if (data.length === 0) {
+                resultsEl.innerHTML = '<p style="padding: 8px; color: var(--text-muted); font-size: 0.9rem; text-align: center;">Không tìm thấy chỉ số nào.</p>';
+                resultsEl.style.display = 'block';
+                return;
+            }
+
+            data.forEach(opt => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.justify = 'space-between';
+                row.style.alignItems = 'center';
+                row.style.padding = '6px 10px';
+                row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                row.style.cursor = 'pointer';
+                row.style.transition = 'background 0.2s';
+                row.style.fontSize = '0.9rem';
+                
+                row.innerHTML = `
+                    <div style="color: #fff; font-weight: 500;">
+                        <span style="color: var(--primary); font-weight: 700; font-family: 'Orbitron', sans-serif;">ID ${opt.id}</span> - ${opt.NAME}
+                    </div>
+                    <button type="button" class="btn" style="padding: 4px 8px; font-size: 0.75rem;" onclick="addSearchedOption(${opt.id}, '${escapeHtml(opt.NAME)}')">Chọn</button>
+                `;
+                resultsEl.appendChild(row);
+            });
+            resultsEl.style.display = 'block';
+        } catch (error) {
+            window.showAlert('Lỗi tải danh sách chỉ số.', 'error');
+        }
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function addSearchedOption(id, name) {
+        addOptionRow(id, 1, name);
+    }
+
+    // Add option row helper inside modal Form
+    function addOptionRow(optId = '', value = 1, optName = '') {
+        const container = document.getElementById('options-container');
+        const index = optionRowCount;
+        
+        const row = document.createElement('div');
+        row.id = `option-row-${index}`;
+        row.style.display = 'grid';
+        row.style.gridTemplateColumns = '1fr 2fr 1fr auto';
+        row.style.gap = '10px';
+        row.style.alignItems = 'center';
+        row.style.background = 'rgba(255,255,255,0.02)';
+        row.style.padding = '8px';
+        row.style.borderRadius = '6px';
+        row.style.border = '1px solid rgba(255,107,0,0.1)';
+        
+        row.innerHTML = `
+            <div>
+                <input type="number" name="options[${index}][id]" class="form-input" style="padding: 8px 10px; font-size: 0.95rem;" value="${optId}" placeholder="ID..." required oninput="updateOptionName(${index})">
+            </div>
+            <div id="opt-name-text-${index}" style="color: #fff; font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${optName}">
+                ${optName || (optId ? 'Đang tải...' : 'Nhập ID chỉ số')}
+            </div>
+            <div>
+                <input type="number" name="options[${index}][value]" class="form-input" style="padding: 8px 10px; font-size: 0.95rem;" value="${value}" placeholder="Giá trị..." required>
+            </div>
+            <button type="button" class="btn btn-danger" style="padding: 8px 10px;" onclick="removeOptionRow(${index})">Xóa</button>
+        `;
+        
+        container.appendChild(row);
+        optionRowCount++;
+        
+        if (optId && !optName) {
+            updateOptionName(index);
+        }
+    }
+
+    function addEmptyOptionRow() {
+        addOptionRow('', 1, '');
+    }
+
+    function removeOptionRow(index) {
+        const row = document.getElementById(`option-row-${index}`);
+        if (row) {
+            row.remove();
+        }
+    }
+
+    async function updateOptionName(index) {
+        const idInput = document.querySelector(`[name="options[${index}][id]"]`);
+        const textEl = document.getElementById(`opt-name-text-${index}`);
+        if (!idInput || !textEl) return;
+        
+        const val = idInput.value.trim();
+        if (val === '') {
+            textEl.innerText = 'Nhập ID chỉ số';
+            textEl.style.color = '#fff';
+            return;
+        }
+
+        try {
+            const response = await fetch(`{{ route('admin.shop.search-options') }}?q=${encodeURIComponent(val)}`);
+            const data = await response.json();
+            const match = data.find(item => item.id == val);
+            if (match) {
+                textEl.innerText = match.NAME;
+                textEl.title = match.NAME;
+                textEl.style.color = 'var(--secondary)';
+            } else {
+                textEl.innerText = 'Không tìm thấy ID';
+                textEl.style.color = '#ff1744';
+            }
+        } catch (e) {
+            textEl.innerText = 'Lỗi kết nối';
+            textEl.style.color = '#ff1744';
+        }
+    }
+
     // Modal control helper
     function openAddModal() {
         mode = 'add';
@@ -185,6 +356,12 @@
         document.getElementById('shop-form').reset();
         document.getElementById('search-section').style.display = 'block';
         document.getElementById('template-select').required = true;
+        
+        document.getElementById('options-container').innerHTML = '';
+        document.getElementById('search-option-query').value = '';
+        document.getElementById('search-options-results').style.display = 'none';
+        optionRowCount = 0;
+        
         document.getElementById('shop-modal').classList.add('show');
     }
 
@@ -201,6 +378,19 @@
         document.getElementById('search-section').style.display = 'none';
         document.getElementById('template-select').required = false;
         
+        document.getElementById('options-container').innerHTML = '';
+        document.getElementById('search-option-query').value = '';
+        document.getElementById('search-options-results').style.display = 'none';
+        optionRowCount = 0;
+
+        // Populate options
+        const opts = item.options || [];
+        if (opts.length > 0) {
+            opts.forEach(opt => {
+                addOptionRow(opt[0], opt[1], '');
+            });
+        }
+        
         document.getElementById('shop-modal').classList.add('show');
     }
 
@@ -216,7 +406,33 @@
         btn.innerText = 'ĐANG XỬ LÝ...';
 
         const itemId = document.getElementById('form-item-id').value;
-        const formData = new FormData(document.getElementById('shop-form'));
+        
+        const payload = {
+            price_vnd: parseInt(document.getElementById('form-price').value),
+            quantity: parseInt(document.getElementById('form-qty').value),
+            image_override: document.getElementById('form-img').value,
+            is_active: parseInt(document.getElementById('form-active').value),
+            options: []
+        };
+
+        if (mode === 'add') {
+            payload.item_template_id = parseInt(document.getElementById('template-select').value);
+        }
+
+        // Parse options inputs dynamically
+        const optContainer = document.getElementById('options-container');
+        const optRows = optContainer.children;
+        for (let row of optRows) {
+            const index = row.id.split('-').pop();
+            const idInput = document.querySelector(`[name="options[${index}][id]"]`);
+            const valInput = document.querySelector(`[name="options[${index}][value]"]`);
+            if (idInput && valInput && idInput.value.trim() !== '') {
+                payload.options.push({
+                    id: parseInt(idInput.value),
+                    value: parseInt(valInput.value)
+                });
+            }
+        }
         
         let url = '{{ route("admin.shop.store") }}';
         let method = 'POST';
@@ -226,15 +442,10 @@
             method = 'PUT';
         }
 
-        const data = Object.fromEntries(formData.entries());
-        if (mode === 'edit') {
-            delete data.item_template_id; // omit template on edit
-        }
-
         try {
             const response = await window.csrfFetch(url, {
                 method: method,
-                body: JSON.stringify(data)
+                body: JSON.stringify(payload)
             });
             const result = await response.json();
 

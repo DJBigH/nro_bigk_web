@@ -57,19 +57,10 @@ class GiftCodeController extends Controller
             ]);
         }
 
-        // 5. Check if player is online
-        $lastLogin = $account->last_time_login ? strtotime($account->last_time_login) : 0;
-        $lastLogout = $account->last_time_logout ? strtotime($account->last_time_logout) : 0;
-        if ($lastLogin > $lastLogout) {
-            return response()->json([
-                'success' => false,
-                'message' => '⚠️ Tài khoản đang online trong game. Vui lòng THOÁT GAME hoàn toàn trước khi nhận code để tránh mất đồ.'
-            ]);
-        }
-
-        // 6. Parse the item list from code
+        // 5. Parse the item list from code
         $itemIds = json_decode($gift->item_id, true) ?? [];
         $quantities = json_decode($gift->item_quantity, true) ?? [];
+        $itemOptions = json_decode($gift->item_options, true) ?? [];
 
         if (empty($itemIds)) {
             return response()->json([
@@ -78,57 +69,21 @@ class GiftCodeController extends Controller
             ]);
         }
 
-        // 7. Load current items_bag and count empty slots
-        $itemsBag = json_decode($player->items_bag, true);
-        if (!is_array($itemsBag)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu hành trang nhân vật không hợp lệ.'
-            ]);
-        }
-
-        // Count empty slots
-        $emptySlots = [];
-        foreach ($itemsBag as $index => $slotStr) {
-            $slotData = json_decode($slotStr, true);
-            if (is_array($slotData) && isset($slotData[0]) && $slotData[0] == -1) {
-                $emptySlots[] = $index;
-            }
-        }
-
-        $itemsCount = count($itemIds);
-        if (count($emptySlots) < $itemsCount) {
-            return response()->json([
-                'success' => false,
-                'message' => '⚠️ Hành trang của bạn cần ít nhất ' . $itemsCount . ' ô trống để nhận các vật phẩm này. Hiện tại chỉ trống ' . count($emptySlots) . ' ô.'
-            ]);
-        }
-
-        // 8. Process redemption and update DB
+        // 6. Process redemption and update DB
         DB::beginTransaction();
         try {
-            // Deliver each item to inventory
+            // Deliver each item to Web Chest
             foreach ($itemIds as $index => $itemId) {
                 $quantity = isset($quantities[$index]) ? (int)$quantities[$index] : 1;
-                $emptySlotIndex = $emptySlots[$index];
+                $optionsArray = isset($itemOptions[$index]) && is_array($itemOptions[$index]) ? $itemOptions[$index] : [];
 
-                // Build item slot array [itemId, quantity, options, createTime]
-                $newItemSlot = [
-                    (int)$itemId,
-                    (int)$quantity,
-                    "[]",
-                    round(microtime(true) * 1000)
-                ];
-
-                $itemsBag[$emptySlotIndex] = json_encode($newItemSlot);
-            }
-
-            // Save modified inventory bag to player
-            DB::table('player')
-                ->where('id', $player->id)
-                ->update([
-                    'items_bag' => json_encode($itemsBag)
+                \App\Models\WebChestItem::create([
+                    'account_id' => $account->id,
+                    'item_template_id' => (int)$itemId,
+                    'quantity' => (int)$quantity,
+                    'options' => $optionsArray
                 ]);
+            }
 
             // Add username to used list
             $listUser[] = $account->username;
@@ -142,7 +97,7 @@ class GiftCodeController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Nhập mã quà tặng "' . $gift->name . '" thành công! Các vật phẩm đã được chuyển vào hành trang.'
+                'message' => 'Nhập mã quà tặng "' . $gift->name . '" thành công! Các vật phẩm đã được chuyển vào Rương đồ Web. Vui lòng vào Hồ Sơ để rút vào game.'
             ]);
 
         } catch (\Exception $e) {
@@ -170,42 +125,7 @@ class GiftCodeController extends Controller
             ]);
         }
 
-        // 2. Check if player is online
-        $lastLogin = $account->last_time_login ? strtotime($account->last_time_login) : 0;
-        $lastLogout = $account->last_time_logout ? strtotime($account->last_time_logout) : 0;
-        if ($lastLogin > $lastLogout) {
-            return response()->json([
-                'success' => false,
-                'message' => '⚠️ Tài khoản đang online trong game. Vui lòng THOÁT GAME hoàn toàn trước khi nhận code để tránh mất đồ.'
-            ]);
-        }
-
-        // 3. Load current items_bag and find empty slots
-        $itemsBag = json_decode($player->items_bag, true);
-        if (!is_array($itemsBag)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu hành trang nhân vật không hợp lệ.'
-            ]);
-        }
-
-        // Find all empty slots
-        $emptySlots = [];
-        foreach ($itemsBag as $index => $slotStr) {
-            $slotData = json_decode($slotStr, true);
-            if (is_array($slotData) && isset($slotData[0]) && $slotData[0] == -1) {
-                $emptySlots[] = $index;
-            }
-        }
-
-        if (empty($emptySlots)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Hành trang của bạn không còn ô trống nào.'
-            ]);
-        }
-
-        // 4. Fetch all gift codes
+        // 2. Fetch all gift codes
         $gifts = DB::table('gift')->get();
         $claimedCount = 0;
         $deliveredItemsCount = 0;
@@ -229,31 +149,23 @@ class GiftCodeController extends Controller
                 // Parse items
                 $itemIds = json_decode($gift->item_id, true) ?? [];
                 $quantities = json_decode($gift->item_quantity, true) ?? [];
-                $itemsCount = count($itemIds);
+                $itemOptions = json_decode($gift->item_options, true) ?? [];
 
                 if (empty($itemIds)) {
                     continue;
                 }
 
-                // Check if we have enough empty slots left for this code
-                if (count($emptySlots) < $itemsCount) {
-                    // Stop or skip if inventory gets full
-                    break;
-                }
-
-                // Deliver items for this gift
+                // Deliver items for this gift to Web Chest
                 foreach ($itemIds as $index => $itemId) {
                     $quantity = isset($quantities[$index]) ? (int)$quantities[$index] : 1;
-                    $emptySlotIndex = array_shift($emptySlots); // Take first empty slot
+                    $optionsArray = isset($itemOptions[$index]) && is_array($itemOptions[$index]) ? $itemOptions[$index] : [];
 
-                    $newItemSlot = [
-                        (int)$itemId,
-                        (int)$quantity,
-                        "[]",
-                        round(microtime(true) * 1000)
-                    ];
-
-                    $itemsBag[$emptySlotIndex] = json_encode($newItemSlot);
+                    \App\Models\WebChestItem::create([
+                        'account_id' => $account->id,
+                        'item_template_id' => (int)$itemId,
+                        'quantity' => (int)$quantity,
+                        'options' => $optionsArray
+                    ]);
                     $deliveredItemsCount++;
                 }
 
@@ -273,22 +185,15 @@ class GiftCodeController extends Controller
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'Bạn đã sử dụng hết các mã giftcode hợp lệ hoặc hành trang không đủ chỗ.'
+                    'message' => 'Bạn đã sử dụng hết các mã giftcode hợp lệ hoặc rương đồ web đầy.'
                 ]);
             }
-
-            // Save player inventory
-            DB::table('player')
-                ->where('id', $player->id)
-                ->update([
-                    'items_bag' => json_encode($itemsBag)
-                ]);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Thành công! Đã nhận ' . $claimedCount . ' mã quà tặng (' . implode(', ', $claimedCodes) . '). Tổng cộng ' . $deliveredItemsCount . ' vật phẩm đã được chuyển vào hành trang.'
+                'message' => 'Thành công! Đã nhận ' . $claimedCount . ' mã quà tặng (' . implode(', ', $claimedCodes) . '). Tổng cộng ' . $deliveredItemsCount . ' vật phẩm đã được chuyển vào Rương đồ Web. Vui lòng vào Hồ Sơ để rút vào game.'
             ]);
 
         } catch (\Exception $e) {
@@ -298,5 +203,22 @@ class GiftCodeController extends Controller
                 'message' => 'Đã xảy ra lỗi trong quá trình nhận tất cả: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Format item options to match game server internal format.
+     */
+    private function formatItemOptions($optionsArray)
+    {
+        if (empty($optionsArray)) {
+            return "[]";
+        }
+        $formatted = [];
+        foreach ($optionsArray as $opt) {
+            if (isset($opt[0])) {
+                $formatted[] = json_encode([(int)$opt[0], (int)$opt[1]]);
+            }
+        }
+        return json_encode($formatted);
     }
 }

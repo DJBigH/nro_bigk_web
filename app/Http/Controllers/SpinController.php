@@ -158,17 +158,7 @@ class SpinController extends Controller
             ]);
         }
 
-        // 4. Check if player is online (prevent overwrite bug)
-        $lastLogin = $account->last_time_login ? strtotime($account->last_time_login) : 0;
-        $lastLogout = $account->last_time_logout ? strtotime($account->last_time_logout) : 0;
-        if ($lastLogin > $lastLogout) {
-            return response()->json([
-                'success' => false,
-                'message' => '⚠️ Tài khoản đang online trong game. Vui lòng THOÁT GAME hoàn toàn trước khi quay để nhận thưởng trực tiếp.'
-            ]);
-        }
-
-        // 5. Load active spin items
+        // 4. Load active spin items
         $items = SpinWheelItem::where('is_active', 1)->orderBy('sort_order', 'asc')->get();
         if ($items->isEmpty()) {
             return response()->json([
@@ -177,7 +167,7 @@ class SpinController extends Controller
             ]);
         }
 
-        // 6. Weighted random selection
+        // 5. Weighted random selection
         $totalRatio = $items->sum('ratio');
         $randVal = mt_rand(1, $totalRatio * 100) / 100.0;
 
@@ -200,7 +190,7 @@ class SpinController extends Controller
             $winnerIndex = 0;
         }
 
-        // 7. Deliver rewards and deduct balance
+        // 6. Deliver rewards and deduct balance
         DB::beginTransaction();
         try {
             // Deduct spin cost
@@ -231,40 +221,14 @@ class SpinController extends Controller
                     ->update(['coin' => $currentCoin + $winningItem->reward_value]);
                 $rewardMsg = "Bạn đã trúng " . number_format($winningItem->reward_value) . " Xu game! Tiền đã được cộng vào tài khoản.";
             } elseif ($winningItem->reward_type === 'item') {
-                // Parse items_bag and deliver item
-                $itemsBag = json_decode($player->items_bag, true);
-                if (is_array($itemsBag)) {
-                    $emptySlotIndex = -1;
-                    foreach ($itemsBag as $index => $slotStr) {
-                        $slotData = json_decode($slotStr, true);
-                        if (is_array($slotData) && isset($slotData[0]) && $slotData[0] == -1) {
-                            $emptySlotIndex = $index;
-                            break;
-                        }
-                    }
-
-                    if ($emptySlotIndex !== -1) {
-                        // Deliver
-                        $newItemSlot = [
-                            (int)$winningItem->item_template_id,
-                            (int)$winningItem->reward_value,
-                            "[]", // Options
-                            round(microtime(true) * 1000)
-                        ];
-                        $itemsBag[$emptySlotIndex] = json_encode($newItemSlot);
-
-                        DB::table('player')
-                            ->where('id', $player->id)
-                            ->update(['items_bag' => json_encode($itemsBag)]);
-                        
-                        $rewardMsg = "Bạn đã trúng " . $winningItem->display_name . "! Vật phẩm đã được chuyển vào hành trang nhân vật " . $player->name . ".";
-                    } else {
-                        // Empty slot was checked in client, but since we warnings user, they lose it
-                        $rewardMsg = "⚠️ Bạn đã trúng " . $winningItem->display_name . " nhưng hành trang đã đầy! Vật phẩm đã bị mất tự chịu (đúng như cảnh báo).";
-                    }
-                } else {
-                    $rewardMsg = "Bạn đã trúng " . $winningItem->display_name . " nhưng hành trang bị lỗi.";
-                }
+                // Deliver item to Web Chest
+                \App\Models\WebChestItem::create([
+                    'account_id' => $account->id,
+                    'item_template_id' => (int)$winningItem->item_template_id,
+                    'quantity' => (int)$winningItem->reward_value,
+                    'options' => [] // Spin items don't have default options from database
+                ]);
+                $rewardMsg = "Bạn đã trúng " . $winningItem->display_name . "! Vật phẩm đã được chuyển vào Rương đồ Web. Hãy vào Hồ Sơ để rút vào game.";
             }
 
             // Save history log

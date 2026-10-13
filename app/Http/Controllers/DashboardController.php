@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\Player;
 use App\Models\Post;
 use App\Models\DownloadFile;
+use App\Models\WebChestItem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -40,7 +41,10 @@ class DashboardController extends Controller
         // Load all available gift codes from the game 'gift' table
         $gifts = DB::table('gift')->get();
 
-        return view('dashboard', compact('account', 'players', 'gifts'));
+        // Load the web chest items for this account
+        $chestItems = WebChestItem::where('account_id', $account->id)->get();
+
+        return view('dashboard', compact('account', 'players', 'gifts', 'chestItems'));
     }
 
     /**
@@ -172,5 +176,200 @@ class DashboardController extends Controller
         }
 
         return view('ranking', compact('rankings', 'type'));
+    }
+
+    /**
+     * Withdraw a single item from the web chest to the in-game inventory.
+     */
+    public function withdrawChestItem(Request $request, $id)
+    {
+        $account = Auth::user();
+        $item = WebChestItem::where('account_id', $account->id)->findOrFail($id);
+
+        // 1. Check player character
+        $player = Player::where('account_id', $account->id)->first();
+        if (!$player) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn chưa tạo nhân vật trong game. Vui lòng vào game tạo nhân vật trước.'
+            ]);
+        }
+
+        // 2. Check if player is online
+        $lastLogin = $account->last_time_login ? strtotime($account->last_time_login) : 0;
+        $lastLogout = $account->last_time_logout ? strtotime($account->last_time_logout) : 0;
+        if ($lastLogin > $lastLogout) {
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ Tài khoản đang online trong game. Vui lòng THOÁT GAME hoàn toàn trước khi rút đồ.'
+            ]);
+        }
+
+        // 3. Decode items_bag and find empty slot
+        $itemsBag = json_decode($player->items_bag, true);
+        if (!is_array($itemsBag)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu hành trang nhân vật không hợp lệ.'
+            ]);
+        }
+
+        $emptySlotIndex = -1;
+        foreach ($itemsBag as $index => $slotStr) {
+            $slotData = json_decode($slotStr, true);
+            if (is_array($slotData) && isset($slotData[0]) && $slotData[0] == -1) {
+                $emptySlotIndex = $index;
+                break;
+            }
+        }
+
+        if ($emptySlotIndex === -1) {
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ Hành trang nhân vật đã đầy. Vui lòng cất bớt đồ vào rương rồi thử lại.'
+            ]);
+        }
+
+        // 4. Format item options and save
+        DB::beginTransaction();
+        try {
+            $formattedOptionsStr = $this->formatItemOptions($item->options ?? []);
+            
+            $newItemSlot = [
+                (int)$item->item_template_id,
+                (int)$item->quantity,
+                $formattedOptionsStr,
+                round(microtime(true) * 1000)
+            ];
+
+            $itemsBag[$emptySlotIndex] = json_encode($newItemSlot);
+
+            DB::table('player')
+                ->where('id', $player->id)
+                ->update(['items_bag' => json_encode($itemsBag)]);
+
+            // Delete item from chest
+            $item->delete();
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Rút vật phẩm "' . ($item->template->NAME ?? 'Vật phẩm') . '" vào hành trang game thành công!'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Withdraw all items from the web chest to the in-game inventory.
+     */
+    public function withdrawAllChestItems()
+    {
+        $account = Auth::user();
+        $items = WebChestItem::where('account_id', $account->id)->get();
+        if ($items->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Rương đồ Web của bạn đang trống.'
+            ]);
+        }
+
+        $player = Player::where('account_id', $account->id)->first();
+        if (!$player) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn chưa tạo nhân vật trong game. Vui lòng vào game tạo nhân vật trước.'
+            ]);
+        }
+
+        // Check if player is online
+        $lastLogin = $account->last_time_login ? strtotime($account->last_time_login) : 0;
+        $lastLogout = $account->last_time_logout ? strtotime($account->last_time_logout) : 0;
+        if ($lastLogin > $lastLogout) {
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ Tài khoản đang online trong game. Vui lòng THOÁT GAME hoàn toàn trước khi rút đồ.'
+            ]);
+        }
+
+        $itemsBag = json_decode($player->items_bag, true);
+        if (!is_array($itemsBag)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu hành trang nhân vật không hợp lệ.'
+            ]);
+        }
+
+        // Find empty slots
+        $emptySlots = [];
+        foreach ($itemsBag as $index => $slotStr) {
+            $slotData = json_decode($slotStr, true);
+            if (is_array($slotData) && isset($slotData[0]) && $slotData[0] == -1) {
+                $emptySlots[] = $index;
+            }
+        }
+
+        if (count($emptySlots) < $items->count()) {
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ Hành trang của bạn cần ít nhất ' . $items->count() . ' ô trống để rút toàn bộ vật phẩm. Hiện tại chỉ trống ' . count($emptySlots) . ' ô.'
+            ]);
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($items as $idx => $item) {
+                $emptySlotIndex = $emptySlots[$idx];
+                $formattedOptionsStr = $this->formatItemOptions($item->options ?? []);
+                
+                $newItemSlot = [
+                    (int)$item->item_template_id,
+                    (int)$item->quantity,
+                    $formattedOptionsStr,
+                    round(microtime(true) * 1000)
+                ];
+
+                $itemsBag[$emptySlotIndex] = json_encode($newItemSlot);
+                $item->delete();
+            }
+
+            DB::table('player')
+                ->where('id', $player->id)
+                ->update(['items_bag' => json_encode($itemsBag)]);
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Rút toàn bộ ' . $items->count() . ' vật phẩm vào game thành công!'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Format item options to match game server internal format.
+     */
+    private function formatItemOptions($optionsArray)
+    {
+        if (empty($optionsArray)) {
+            return "[]";
+        }
+        $formatted = [];
+        foreach ($optionsArray as $opt) {
+            if (isset($opt[0])) {
+                $formatted[] = json_encode([(int)$opt[0], (int)$opt[1]]);
+            }
+        }
+        return json_encode($formatted);
     }
 }

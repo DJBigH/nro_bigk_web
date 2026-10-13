@@ -24,12 +24,17 @@ class SpinWheelItem extends Model
         'sort_order',
     ];
 
-    // Get the item template details from the game DB (item_template)
+    protected static $templateCache = [];
+
+    // Get the item template details from the game DB (item_template) with request-level caching
     public function getTemplateAttribute()
     {
         if (!$this->item_template_id) {
             return null;
         }
-        return DB::table('item_template')->where('id', $this->item_template_id)->first();
+        if (!array_key_exists($this->item_template_id, self::$templateCache)) {
+            self::$templateCache[$this->item_template_id] = DB::table('item_template')->where('id', $this->item_template_id)->first();
+        }
+        return self::$templateCache[$this->item_template_id];
     }
 }
