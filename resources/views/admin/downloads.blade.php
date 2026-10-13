@@ -54,6 +54,10 @@
                 @endforeach
             </tbody>
         </table>
+        
+        <div style="padding: 15px 20px;">
+            {{ $downloads->links() }}
+        </div>
     @endif
 </div>
 

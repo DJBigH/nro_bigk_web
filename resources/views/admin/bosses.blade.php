@@ -72,7 +72,8 @@
 @php
     $liveCount = 0;
     $dieCount = 0;
-    foreach($bosses as $b) {
+    $bossList = $allBosses ?? $bosses;
+    foreach($bossList as $b) {
         if(($b['status'] ?? 'LIVE') === 'LIVE') {
             $liveCount++;
         } else {
@@ -86,15 +87,15 @@
         <div style="display: flex; align-items: center; gap: 12px;">
             <h3 style="color: #fff; font-size: 1.1rem; margin: 0;">DANH SÁCH TOÀN BỘ BOSS TRÊN MÁY CHỦ</h3>
             <div style="display: flex; gap: 6px;">
-                <button type="button" class="badge" style="cursor: pointer; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 4px 10px;" onclick="filterBoss('all')">
-                    Tất cả ({{ count($bosses) }})
-                </button>
-                <button type="button" class="badge" style="cursor: pointer; background: rgba(0, 230, 118, 0.2); color: #00e676; border: 1px solid #00e676; padding: 4px 10px;" onclick="filterBoss('live')">
+                <a href="{{ request()->fullUrlWithQuery(['status' => 'all', 'page' => 1]) }}" class="badge" style="text-decoration: none; cursor: pointer; background: {{ ($statusFilter ?? 'all') === 'all' ? 'var(--primary)' : 'rgba(255,255,255,0.1)' }}; color: {{ ($statusFilter ?? 'all') === 'all' ? '#000' : '#fff' }}; border: 1px solid rgba(255,255,255,0.2); padding: 4px 10px; font-weight: 700;">
+                    Tất cả ({{ count($bossList) }})
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(['status' => 'live', 'page' => 1]) }}" class="badge" style="text-decoration: none; cursor: pointer; background: {{ ($statusFilter ?? '') === 'live' ? '#00e676' : 'rgba(0, 230, 118, 0.2)' }}; color: {{ ($statusFilter ?? '') === 'live' ? '#000' : '#00e676' }}; border: 1px solid #00e676; padding: 4px 10px; font-weight: 700;">
                     ● LIVE ({{ $liveCount }})
-                </button>
-                <button type="button" class="badge" style="cursor: pointer; background: rgba(255, 23, 68, 0.2); color: #ff1744; border: 1px solid #ff1744; padding: 4px 10px;" onclick="filterBoss('die')">
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(['status' => 'die', 'page' => 1]) }}" class="badge" style="text-decoration: none; cursor: pointer; background: {{ ($statusFilter ?? '') === 'die' ? '#ff1744' : 'rgba(255, 23, 68, 0.2)' }}; color: {{ ($statusFilter ?? '') === 'die' ? '#fff' : '#ff1744' }}; border: 1px solid #ff1744; padding: 4px 10px; font-weight: 700;">
                     ○ DIE ({{ $dieCount }})
-                </button>
+                </a>
             </div>
         </div>
         <div style="font-size: 0.85rem; color: #888;">
@@ -185,6 +186,10 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+        
+        <div style="padding: 15px 20px;">
+            {{ $bosses->links() }}
         </div>
     @endif
 </div>

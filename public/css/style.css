@@ -587,6 +587,34 @@ tr:hover td {
     border-left: 3px solid #ff9800;
 }
 
+.sidebar-group .group-header:hover {
+    border-color: rgba(255, 107, 0, 0.5) !important;
+    background: rgba(255, 107, 0, 0.08) !important;
+}
+
+.sidebar-group .admin-menu-link {
+    padding: 8px 12px;
+    font-size: 0.83rem;
+    border-left: 2px solid transparent;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-group .admin-menu-link:hover {
+    background: rgba(255, 107, 0, 0.08);
+    color: #fff;
+    border-left-color: rgba(255, 107, 0, 0.6);
+    padding-left: 15px;
+}
+
+.sidebar-group .admin-menu-link.active {
+    background: rgba(255, 107, 0, 0.18);
+    color: #ff9800;
+    font-weight: 700;
+    border-left: 3px solid #ff9800;
+    box-shadow: 0 0 10px rgba(255, 107, 0, 0.15);
+}
+
 /* Dashboard Summary Cards */
 .summary-grid {
     display: grid;

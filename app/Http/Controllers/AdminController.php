@@ -17,9 +17,19 @@ use App\Models\WebAccSale;
 use App\Models\WebChestItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class AdminController extends Controller
 {
+    /**
+     * Helper to get safe per_page value (default 5, allows 5, 10, 15, 20)
+     */
+    protected function getPerPage(Request $request, $default = 5)
+    {
+        $perPage = (int) $request->input('per_page', $default);
+        return in_array($perPage, [5, 10, 15, 20]) ? $perPage : $default;
+    }
+
     /**
      * Admin Dashboard index.
      */
@@ -57,8 +67,9 @@ class AdminController extends Controller
                   });
         }
         
-        $accounts = $query->paginate(15);
-        return view('admin.players', compact('accounts', 'search'));
+        $perPage = $this->getPerPage($request, 5);
+        $accounts = $query->paginate($perPage)->appends($request->query());
+        return view('admin.players', compact('accounts', 'search', 'perPage'));
     }
 
     public function banPlayer($id)
@@ -209,11 +220,37 @@ class AdminController extends Controller
     /**
      * Realtime Boss Management
      */
-    public function bosses()
+    public function bosses(Request $request)
     {
         $res = $this->callGameApi('/api/boss/list', [], 'GET');
-        $bosses = $res['bosses'] ?? [];
-        return view('admin.bosses', compact('bosses'));
+        $allBosses = $res['bosses'] ?? [];
+        $statusFilter = $request->input('status', 'all');
+
+        $filteredBosses = $allBosses;
+        if ($statusFilter === 'live') {
+            $filteredBosses = array_values(array_filter($allBosses, function($b) {
+                return ($b['status'] ?? 'LIVE') === 'LIVE';
+            }));
+        } elseif ($statusFilter === 'die') {
+            $filteredBosses = array_values(array_filter($allBosses, function($b) {
+                return ($b['status'] ?? 'LIVE') !== 'LIVE';
+            }));
+        }
+
+        $perPage = $this->getPerPage($request, 5);
+        $currentPage = (int) $request->input('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $items = array_slice($filteredBosses, $offset, $perPage);
+
+        $bosses = new LengthAwarePaginator(
+            $items,
+            count($filteredBosses),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('admin.bosses', compact('bosses', 'allBosses', 'statusFilter', 'perPage'));
     }
 
     public function bossSpawn(Request $request)
@@ -267,17 +304,17 @@ class AdminController extends Controller
     /**
      * Realtime Bot Management
      */
-    public function bots()
+    public function bots(Request $request)
     {
         $res = $this->callGameApi('/api/bot/status', [], 'GET');
         $botCount = $res['bot_count'] ?? 0;
         $chatEnabled = $res['chat_enabled'] ?? true;
-        $bots = $res['bots'] ?? [];
+        $allBots = $res['bots'] ?? [];
 
         // Enrich bot map names using database
         try {
             $mapNames = DB::table('map_template')->pluck('NAME', 'id')->toArray();
-            foreach ($bots as &$b) {
+            foreach ($allBots as &$b) {
                 $mid = $b['mapId'] ?? -1;
                 if (isset($mapNames[$mid])) {
                     $b['mapName'] = $mapNames[$mid];
@@ -287,7 +324,20 @@ class AdminController extends Controller
             }
         } catch (\Exception $e) {}
 
-        return view('admin.bots', compact('botCount', 'chatEnabled', 'bots'));
+        $perPage = $this->getPerPage($request, 5);
+        $currentPage = (int) $request->input('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $items = array_slice($allBots, $offset, $perPage);
+
+        $bots = new LengthAwarePaginator(
+            $items,
+            count($allBots),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('admin.bots', compact('botCount', 'chatEnabled', 'bots', 'allBots', 'perPage'));
     }
 
     public function botSpawn(Request $request)
@@ -333,10 +383,11 @@ class AdminController extends Controller
     /**
      * Web Shop Items management.
      */
-    public function shop()
+    public function shop(Request $request)
     {
-        $shopItems = WebShopItem::paginate(15);
-        return view('admin.shop', compact('shopItems'));
+        $perPage = $this->getPerPage($request, 5);
+        $shopItems = WebShopItem::orderBy('id', 'desc')->paginate($perPage)->appends($request->query());
+        return view('admin.shop', compact('shopItems', 'perPage'));
     }
 
     public function searchTemplates(Request $request)
@@ -461,10 +512,11 @@ class AdminController extends Controller
     /**
      * Gift Codes management.
      */
-    public function giftcodes()
+    public function giftcodes(Request $request)
     {
-        $giftcodes = GiftCode::paginate(15);
-        return view('admin.giftcodes', compact('giftcodes'));
+        $perPage = $this->getPerPage($request, 5);
+        $giftcodes = GiftCode::orderBy('id', 'desc')->paginate($perPage)->appends($request->query());
+        return view('admin.giftcodes', compact('giftcodes', 'perPage'));
     }
 
     public function giftcodeStore(Request $request)
@@ -581,10 +633,7 @@ class AdminController extends Controller
         $search = $request->input('search');
         $type = $request->input('type');
         $gender = $request->input('gender');
-        $perPage = (int) $request->input('per_page', 48);
-        if (!in_array($perPage, [24, 48, 96, 120])) {
-            $perPage = 48;
-        }
+        $perPage = $this->getPerPage($request, 5);
 
         $query = DB::table('item_template');
 
@@ -607,7 +656,7 @@ class AdminController extends Controller
         }
 
         $totalItems = DB::table('item_template')->count();
-        $items = $query->orderBy('id', 'asc')->paginate($perPage);
+        $items = $query->orderBy('id', 'asc')->paginate($perPage)->appends($request->query());
 
         // Lấy danh sách Type tags kèm số lượng
         $itemTypes = DB::table('type_item')
@@ -627,10 +676,11 @@ class AdminController extends Controller
     /**
      * Download Client Links.
      */
-    public function downloads()
+    public function downloads(Request $request)
     {
-        $downloads = DownloadFile::all();
-        return view('admin.downloads', compact('downloads'));
+        $perPage = $this->getPerPage($request, 5);
+        $downloads = DownloadFile::orderBy('id', 'asc')->paginate($perPage)->appends($request->query());
+        return view('admin.downloads', compact('downloads', 'perPage'));
     }
 
     public function downloadStore(Request $request)
@@ -674,10 +724,11 @@ class AdminController extends Controller
     /**
      * Guides Articles.
      */
-    public function posts()
+    public function posts(Request $request)
     {
-        $posts = Post::where('category', 'guide')->paginate(15);
-        return view('admin.posts', compact('posts'));
+        $perPage = $this->getPerPage($request, 5);
+        $posts = Post::where('category', 'guide')->orderBy('id', 'desc')->paginate($perPage)->appends($request->query());
+        return view('admin.posts', compact('posts', 'perPage'));
     }
 
     public function postStore(Request $request)
@@ -833,13 +884,15 @@ class AdminController extends Controller
     /**
      * Recent Server Recharges.
      */
-    public function recharges()
+    public function recharges(Request $request)
     {
+        $perPage = $this->getPerPage($request, 5);
         $transactions = PaymentTransaction::with('account')
             ->orderBy('id', 'desc')
-            ->paginate(20);
+            ->paginate($perPage)
+            ->appends($request->query());
 
-        return view('admin.recharges', compact('transactions'));
+        return view('admin.recharges', compact('transactions', 'perPage'));
     }
 
     /**
@@ -854,10 +907,11 @@ class AdminController extends Controller
             $query->where('status', $status);
         }
         
-        $listings = $query->orderBy('created_at', 'desc')->paginate(15);
+        $perPage = $this->getPerPage($request, 5);
+        $listings = $query->orderBy('created_at', 'desc')->paginate($perPage)->appends($request->query());
         $commission = (int)Setting::get('acc_sale_commission', 10);
 
-        return view('admin.acc_sales', compact('listings', 'commission', 'status'));
+        return view('admin.acc_sales', compact('listings', 'commission', 'status', 'perPage'));
     }
 
     /**
@@ -1035,8 +1089,9 @@ class AdminController extends Controller
             });
         }
         
-        $chestItems = $query->orderBy('created_at', 'desc')->paginate(15);
-        return view('admin.web_chest', compact('chestItems', 'search'));
+        $perPage = $this->getPerPage($request, 5);
+        $chestItems = $query->orderBy('created_at', 'desc')->paginate($perPage)->appends($request->query());
+        return view('admin.web_chest', compact('chestItems', 'search', 'perPage'));
     }
 
     /**
@@ -1099,10 +1154,11 @@ class AdminController extends Controller
     /**
      * Nhiệm Vụ Bò Mộng & Thành Tựu
      */
-    public function achievements()
+    public function achievements(Request $request)
     {
-        $achievements = DB::table('archive_template')->orderBy('id', 'asc')->get();
-        return view('admin.achievements', compact('achievements'));
+        $perPage = $this->getPerPage($request, 5);
+        $achievements = DB::table('archive_template')->orderBy('id', 'asc')->paginate($perPage)->appends($request->query());
+        return view('admin.achievements', compact('achievements', 'perPage'));
     }
 
     public function achievementStore(Request $request)
@@ -1169,10 +1225,11 @@ class AdminController extends Controller
             $query->where('mob_drop.map_id', (int) $mapId);
         }
 
-        $drops = $query->orderBy('mob_drop.id', 'desc')->paginate(20);
+        $perPage = $this->getPerPage($request, 5);
+        $drops = $query->orderBy('mob_drop.id', 'desc')->paginate($perPage)->appends($request->query());
         $maps = DB::table('map_template')->select('id', 'name')->orderBy('id', 'asc')->get();
 
-        return view('admin.drops', compact('drops', 'maps', 'mobId', 'mapId'));
+        return view('admin.drops', compact('drops', 'maps', 'mobId', 'mapId', 'perPage'));
     }
 
     public function dropStore(Request $request)

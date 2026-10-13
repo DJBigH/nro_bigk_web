@@ -78,6 +78,10 @@
                 </tbody>
             </table>
         </div>
+
+        <div style="padding: 15px 20px;">
+            {{ $achievements->links() }}
+        </div>
     @endif
 </div>
 

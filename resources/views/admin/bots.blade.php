@@ -90,10 +90,10 @@
 <div class="card" style="padding: 0;">
     <div style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
         <h3 style="color: #fff; font-size: 1.1rem; margin: 0;">DANH SÁCH BOT ĐANG HOẠT ĐỘNG TRONG GAME</h3>
-        <span style="color: #00e5ff; font-size: 0.9rem; font-weight: 700;">{{ count($bots) }} Bot đang online</span>
+        <span style="color: #00e5ff; font-size: 0.9rem; font-weight: 700;">{{ count($allBots ?? $bots) }} Bot đang online</span>
     </div>
 
-    @if(empty($bots))
+    @if(empty($bots) || $bots->isEmpty())
         <div style="padding: 40px; text-align: center; color: var(--text-muted);">
             <div style="font-size: 2.5rem; margin-bottom: 10px;">🤖</div>
             <p>Hiện tại không có Bot AI nào đang chạy hoặc Game Server chưa khởi động.</p>
@@ -148,6 +148,10 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+
+        <div style="padding: 15px 20px;">
+            {{ $bots->links() }}
         </div>
     @endif
 </div>
