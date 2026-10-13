@@ -83,7 +83,7 @@
         </div>
 
         <!-- Scrollable Map Cards List -->
-        <div id="mapCardsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; height: calc(100vh - 300px); min-height: 520px; padding-right: 3px;">
+        <div id="mapCardsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; height: calc(100vh - 345px); min-height: 480px; padding-right: 3px;">
             @foreach($maps as $m)
                 <div class="map-card-item {{ $m->id == 0 ? 'active' : '' }}" id="map-card-{{ $m->id }}" onclick="switchMap({{ $m->id }})" data-name="{{ strtolower($m->name) }}" data-id="{{ $m->id }}" style="padding: 7px 9px; border-radius: 6px; cursor: pointer; transition: all 0.15s; border: 1px solid {{ $m->id == 0 ? '#3fb950' : '#21262d' }}; background: {{ $m->id == 0 ? 'rgba(35, 134, 54, 0.18)' : 'rgba(22, 27, 34, 0.6)' }};">
                     <div style="font-weight: 700; color: {{ $m->id == 0 ? '#3fb950' : '#f0f6fc' }}; font-size: 0.83rem; display: flex; justify-content: space-between;">
@@ -94,6 +94,32 @@
                     </div>
                 </div>
             @endforeach
+        </div>
+
+        <!-- Pagination Controls -->
+        <div style="padding-top: 8px; border-top: 1px solid #30363d; margin-top: 6px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
+                <button type="button" class="btn btn-sm" id="btnPrevMapPage" onclick="prevMapPage()" title="Trang trước" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer;">
+                    ◀
+                </button>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <select id="mapPageSelect" onchange="goToMapPage(this.value)" style="background: #040d1a; color: #58a6ff; font-weight: 600; border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; font-size: 0.75rem; font-family: monospace; outline: none; cursor: pointer;">
+                    </select>
+                </div>
+                <button type="button" class="btn btn-sm" id="btnNextMapPage" onclick="nextMapPage()" title="Trang sau" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer;">
+                    ▶
+                </button>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: #8b949e;">
+                <span id="mapPaginationCountInfo">15 / 178 map</span>
+                <select id="mapPerPageSelect" onchange="changeMapPerPage(this.value)" style="background: #040d1a; color: #8b949e; border: 1px solid #21262d; border-radius: 4px; font-size: 0.72rem; cursor: pointer; padding: 2px 4px; outline: none;">
+                    <option value="10">10 / trang</option>
+                    <option value="15" selected>15 / trang</option>
+                    <option value="25">25 / trang</option>
+                    <option value="50">50 / trang</option>
+                    <option value="999">Tất cả</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -442,6 +468,107 @@ function getTileImage(tileId, tileIndex) {
 // =============================================================
 // MAP SWITCHING & DATA LOADING
 // =============================================================
+let mapCurrentPage = 1;
+let mapPerPage = 15;
+let filteredMapCards = [];
+
+function initMapPagination() {
+    filteredMapCards = Array.from(document.querySelectorAll('.map-card-item'));
+    renderMapPagination();
+}
+
+function renderMapPagination() {
+    const totalItems = filteredMapCards.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / mapPerPage));
+
+    if (mapCurrentPage > totalPages) mapCurrentPage = totalPages;
+    if (mapCurrentPage < 1) mapCurrentPage = 1;
+
+    // Ẩn tất cả thẻ trước
+    document.querySelectorAll('.map-card-item').forEach(c => c.style.display = 'none');
+
+    // Hiện các thẻ thuộc trang hiện tại
+    const startIdx = (mapCurrentPage - 1) * mapPerPage;
+    const endIdx = startIdx + mapPerPage;
+    const pageCards = filteredMapCards.slice(startIdx, endIdx);
+    pageCards.forEach(c => c.style.display = 'block');
+
+    // Cập nhật select chọn trang
+    const select = document.getElementById('mapPageSelect');
+    if (select) {
+        select.innerHTML = '';
+        for (let i = 1; i <= totalPages; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.innerText = `Trang ${i}/${totalPages}`;
+            if (i === mapCurrentPage) opt.selected = true;
+            select.appendChild(opt);
+        }
+    }
+
+    // Nút Trước / Sau
+    const prevBtn = document.getElementById('btnPrevMapPage');
+    const nextBtn = document.getElementById('btnNextMapPage');
+    if (prevBtn) {
+        prevBtn.disabled = (mapCurrentPage <= 1);
+        prevBtn.style.opacity = (mapCurrentPage <= 1) ? '0.35' : '1';
+        prevBtn.style.cursor = (mapCurrentPage <= 1) ? 'not-allowed' : 'pointer';
+    }
+    if (nextBtn) {
+        nextBtn.disabled = (mapCurrentPage >= totalPages);
+        nextBtn.style.opacity = (mapCurrentPage >= totalPages) ? '0.35' : '1';
+        nextBtn.style.cursor = (mapCurrentPage >= totalPages) ? 'not-allowed' : 'pointer';
+    }
+
+    // Text đếm
+    const countInfo = document.getElementById('mapPaginationCountInfo');
+    if (countInfo) {
+        countInfo.innerText = `${pageCards.length} / ${totalItems} map`;
+    }
+}
+
+function prevMapPage() {
+    if (mapCurrentPage > 1) {
+        mapCurrentPage--;
+        renderMapPagination();
+    }
+}
+
+function nextMapPage() {
+    const totalPages = Math.ceil(filteredMapCards.length / mapPerPage);
+    if (mapCurrentPage < totalPages) {
+        mapCurrentPage++;
+        renderMapPagination();
+    }
+}
+
+function goToMapPage(page) {
+    mapCurrentPage = parseInt(page) || 1;
+    renderMapPagination();
+}
+
+function changeMapPerPage(val) {
+    mapPerPage = parseInt(val) || 15;
+    mapCurrentPage = 1;
+    renderMapPagination();
+}
+
+function filterMapList() {
+    const q = document.getElementById('mapSearchInput').value.toLowerCase().trim();
+    const allCards = Array.from(document.querySelectorAll('.map-card-item'));
+    if (!q) {
+        filteredMapCards = allCards;
+    } else {
+        filteredMapCards = allCards.filter(c => {
+            const name = c.getAttribute('data-name') || '';
+            const id = c.getAttribute('data-id') || '';
+            return name.includes(q) || id.includes(q);
+        });
+    }
+    mapCurrentPage = 1;
+    renderMapPagination();
+}
+
 function switchMap(mapId) {
     document.querySelectorAll('.map-card-item').forEach(c => {
         c.style.borderColor = '#21262d';
@@ -451,6 +578,16 @@ function switchMap(mapId) {
     if (activeCard) {
         activeCard.style.borderColor = '#3fb950';
         activeCard.style.background = 'rgba(35, 134, 54, 0.18)';
+
+        // Tự động chuyển đến trang chứa map được chọn nếu đang ở trang khác
+        const cardIndex = filteredMapCards.indexOf(activeCard);
+        if (cardIndex !== -1) {
+            const cardPage = Math.floor(cardIndex / mapPerPage) + 1;
+            if (cardPage !== mapCurrentPage) {
+                mapCurrentPage = cardPage;
+                renderMapPagination();
+            }
+        }
     }
 
     fetch(`/admin/map-editor/data?map_id=${mapId}`)
@@ -478,15 +615,6 @@ function updateHeaderInfo() {
     document.getElementById('canvasDimInfo').innerText = 
         `Kích thước ${tw}×${th} ô (${canvas.width}×${canvas.height} px) · tileset ${currentMapData.tile_id} · nền ${currentMapData.bg_id} · ${zones} khu`;
     document.getElementById('rightDecoHeader').innerText = `▶ Vật trang trí (${decos})`;
-}
-
-function filterMapList() {
-    const q = document.getElementById('mapSearchInput').value.toLowerCase().trim();
-    document.querySelectorAll('.map-card-item').forEach(c => {
-        const name = c.getAttribute('data-name');
-        const id = c.getAttribute('data-id');
-        c.style.display = (!q || name.includes(q) || id.includes(q)) ? 'block' : 'none';
-    });
 }
 
 function setZoom(scale) {
@@ -1290,6 +1418,7 @@ document.addEventListener('fullscreenchange', () => {
 
 // Khởi tạo ban đầu
 document.addEventListener('DOMContentLoaded', () => {
+    initMapPagination();
     if (localStorage.getItem('admin_sidebar_collapsed') === '1') {
         const layout = document.getElementById('adminMainLayout');
         const sidebar = document.getElementById('adminSidebar');
