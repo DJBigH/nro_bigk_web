@@ -98,6 +98,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Bot AI Management
     Route::get('/bots', [AdminController::class, 'bots'])->name('bots');
     Route::post('/bots/spawn', [AdminController::class, 'botSpawn'])->name('bots.spawn');
+    Route::post('/bots/config', [AdminController::class, 'botConfig'])->name('bots.config');
     Route::post('/bots/stop', [AdminController::class, 'botStop'])->name('bots.stop');
     Route::post('/bots/toggle-chat', [AdminController::class, 'botToggleChat'])->name('bots.toggle-chat');
 

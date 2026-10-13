@@ -539,6 +539,12 @@ class AdminController extends Controller
         $botCount = $res['bot_count'] ?? 0;
         $chatEnabled = $res['chat_enabled'] ?? true;
         $allBots = $res['bots'] ?? [];
+        $bossKillRate = $res['boss_kill_rate'] ?? 8;
+        $botCountFarm = $res['bot_count_farm'] ?? 0;
+        $botCountPk = $res['bot_count_pk'] ?? 0;
+        $botCountBoss = $res['bot_count_boss'] ?? 0;
+        $botCountDhvt = $res['bot_count_dhvt'] ?? 0;
+        $botCountNrsd = $res['bot_count_nrsd'] ?? 0;
 
         // Enrich bot map names using database
         try {
@@ -566,13 +572,27 @@ class AdminController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        return view('admin.bots', compact('botCount', 'chatEnabled', 'bots', 'allBots', 'perPage'));
+        return view('admin.bots', compact('botCount', 'chatEnabled', 'bots', 'allBots', 'perPage', 'bossKillRate', 'botCountFarm', 'botCountPk', 'botCountBoss', 'botCountDhvt', 'botCountNrsd'));
     }
 
     public function botSpawn(Request $request)
     {
         $count = (int) ($request->count ?? 5);
-        $res = $this->callGameApi('/api/bot/spawn', ['count' => $count]);
+        $type = (int) ($request->type ?? 0);
+        $res = $this->callGameApi('/api/bot/spawn', ['count' => $count, 'type' => $type]);
+        if (!isset($res['success']) && isset($res['status'])) {
+            $res['success'] = ($res['status'] === 'success');
+        }
+        return response()->json($res);
+    }
+
+    public function botConfig(Request $request)
+    {
+        $payload = [];
+        if ($request->has('boss_kill_rate')) {
+            $payload['boss_kill_rate'] = (int) $request->boss_kill_rate;
+        }
+        $res = $this->callGameApi('/api/bot/config', $payload);
         if (!isset($res['success']) && isset($res['status'])) {
             $res['success'] = ($res['status'] === 'success');
         }
