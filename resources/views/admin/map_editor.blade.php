@@ -52,7 +52,7 @@
             <span style="color: #ffd700; font-weight: 600;">🧙 NPC (Avatar Sprite Game)</span>
             <span style="color: #ff5252; font-weight: 600;">👾 Quái Mob (Thanh HP Bar)</span>
             <span style="color: #00e5ff; font-weight: 600;">🌀 Cổng Portal (Dịch Chuyển)</span>
-            <span style="color: #69f0ae; font-weight: 600;">🟩 Mặt Đất Chuẩn (Y = 430)</span>
+            <span style="color: #69f0ae; font-weight: 600;">🟩 Địa Hình Platform (tile_map_data)</span>
         </div>
         <div id="hoverCoords" style="font-family: 'Orbitron', monospace; font-size: 0.9rem; color: #00e5ff; background: rgba(0,229,255,0.1); padding: 4px 12px; border-radius: 4px; border: 1px solid rgba(0,229,255,0.2);">
             X: 0 | Y: 0
@@ -239,13 +239,19 @@ function getMobImage(iconId) {
     return mobImageCache[id];
 }
 
-function getMapBgImage(bgId, layer = 0) {
-    const key = `x2b${bgId}${layer}`;
+function getMapBgImage(bgId, layer = 0, bgType = 0) {
+    const key = bgType > 0 ? `x2b${bgId}${layer}-${bgType}` : `x2b${bgId}${layer}`;
     if (mapBgCache[key] === undefined) {
         const img = new Image();
         img.src = `/images/map_bgs/${key}.png`;
         img.onload = () => renderCanvas();
-        img.onerror = () => { mapBgCache[key] = null; };
+        img.onerror = () => {
+            if (bgType > 0) {
+                mapBgCache[key] = getMapBgImage(bgId, layer, 0);
+            } else {
+                mapBgCache[key] = null;
+            }
+        };
         mapBgCache[key] = img;
     }
     return mapBgCache[key];
@@ -316,6 +322,7 @@ function reloadMapData() {
 function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const bgId = currentMapData.bg_id !== undefined ? currentMapData.bg_id : 0;
+    const bgType = currentMapData.bg_type !== undefined ? currentMapData.bg_type : 0;
     const planetId = currentMapData.planet_id !== undefined ? currentMapData.planet_id : 0;
     const tileId = currentMapData.tile_id !== undefined ? currentMapData.tile_id : 1;
 
@@ -343,18 +350,31 @@ function renderCanvas() {
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Tính toán đường chân trời tự nhiên từ địa hình thực tế
+    // 2. Tính toán đường chân trời tự nhiên từ địa hình thực tế (Ưu tiên bề mặt mặt đất chính)
     let horizonY = Math.round(canvas.height * 0.72);
     if (currentMapData.platforms && currentMapData.platforms.length > 0) {
-        const groundYs = currentMapData.platforms.map(p => p.y).filter(y => y > canvas.height * 0.35);
-        if (groundYs.length > 0) {
-            horizonY = Math.max(...groundYs);
+        // Tìm mặt đất chính có tổng bề ngang lớn nhất ở nửa dưới bản đồ
+        const widthByY = {};
+        let bestY = null;
+        let maxWidth = 0;
+        currentMapData.platforms.forEach(p => {
+            if (p.y > canvas.height * 0.35) {
+                const w = (p.x2 - p.x1);
+                widthByY[p.y] = (widthByY[p.y] || 0) + w;
+                if (widthByY[p.y] > maxWidth) {
+                    maxWidth = widthByY[p.y];
+                    bestY = p.y;
+                }
+            }
+        });
+        if (bestY !== null) {
+            horizonY = bestY;
         }
     }
 
-    // 3. Vẽ các layer Background NRO thật từ game (x2b{bgId}0, x2b{bgId}1, x2b{bgId}2, x2b{bgId}3)
-    // Layer 0: Bầu trời xa / Biển xa / Dãy núi chân trời
-    const bg0 = getMapBgImage(bgId, 0);
+    // 3. Vẽ Parallax Background Game NRO chuẩn (Layer 0 Sky + Layer 1 Mid Landscape)
+    // Layer 0: Bầu trời xa / Chân trời / Mây núi xa
+    const bg0 = getMapBgImage(bgId, 0, bgType);
     if (bg0 && bg0.complete && bg0.naturalWidth > 0) {
         const scale0 = Math.max(1.8, (horizonY - 20) / bg0.naturalHeight);
         const bgW0 = bg0.naturalWidth * scale0;
@@ -365,8 +385,8 @@ function renderCanvas() {
         }
     }
 
-    // Layer 1: Đồi núi / Nhà cửa trung cảnh (nếu có)
-    const bg1 = getMapBgImage(bgId, 1);
+    // Layer 1: Đồi núi / Nhà cửa / Khung cảnh trung cảnh (Tile lặp chuẩn ngang khớp chân trời)
+    const bg1 = getMapBgImage(bgId, 1, bgType);
     if (bg1 && bg1.complete && bg1.naturalWidth > 0) {
         const scale1 = 1.35;
         const bgW1 = bg1.naturalWidth * scale1;
@@ -374,30 +394,6 @@ function renderCanvas() {
         const startY1 = horizonY - bgH1 + 10;
         for (let x = 0; x < canvas.width; x += bgW1) {
             ctx.drawImage(bg1, x, startY1, bgW1, bgH1);
-        }
-    }
-
-    // Layer 2: Cây cối / Khung cảnh cận cảnh (nếu có)
-    const bg2 = getMapBgImage(bgId, 2);
-    if (bg2 && bg2.complete && bg2.naturalWidth > 0) {
-        const scale2 = 1.2;
-        const bgW2 = bg2.naturalWidth * scale2;
-        const bgH2 = bg2.naturalHeight * scale2;
-        const startY2 = horizonY - bgH2 + 15;
-        for (let x = 0; x < canvas.width; x += bgW2) {
-            ctx.drawImage(bg2, x, startY2, bgW2, bgH2);
-        }
-    }
-
-    // Layer 3: Chi tiết phụ
-    const bg3 = getMapBgImage(bgId, 3);
-    if (bg3 && bg3.complete && bg3.naturalWidth > 0) {
-        const scale3 = 1.0;
-        const bgW3 = bg3.naturalWidth * scale3;
-        const bgH3 = bg3.naturalHeight * scale3;
-        const startY3 = horizonY - bgH3;
-        for (let x = 0; x < canvas.width; x += bgW3) {
-            ctx.drawImage(bg3, x, startY3, bgW3, bgH3);
         }
     }
 
@@ -565,7 +561,7 @@ function renderCanvas() {
             ctx.textAlign = 'center';
             const pText = '🌀 ' + w.name;
             const tw = ctx.measureText(pText).width;
-            ctx.fillStyle = 'rgba(7, 12, 24, 0.85)';
+            ctx.fillStyle = 'rgba(7, 12, 24, 0.9)';
             ctx.fillRect(wx - tw/2 - 6, wy - 42, tw + 12, 18);
             ctx.strokeStyle = '#00e5ff';
             ctx.strokeRect(wx - tw/2 - 6, wy - 42, tw + 12, 18);
@@ -573,18 +569,76 @@ function renderCanvas() {
             ctx.fillStyle = '#00e5ff';
             ctx.fillText(pText, wx, wy - 29);
 
-            ctx.fillStyle = '#80d8ff';
+            // Chi tiết đích đến cổng có badge nền tối chống lóa
+            const wpDetail = `→ Map ${w.goMap} (${w.goX},${w.goY})`;
             ctx.font = '10px monospace';
-            ctx.fillText(`→ Map ${w.goMap} (${w.goX},${w.goY})`, wx, wy + 38);
+            const dw = ctx.measureText(wpDetail).width;
+            ctx.fillStyle = 'rgba(7, 12, 24, 0.85)';
+            ctx.fillRect(wx - dw/2 - 5, wy + 26, dw + 10, 16);
+            ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+            ctx.strokeRect(wx - dw/2 - 5, wy + 26, dw + 10, 16);
+            ctx.fillStyle = '#80d8ff';
+            ctx.fillText(wpDetail, wx, wy + 38);
         });
     }
 
-    // 5. Vẽ Quái Mob (Với Sprite Icon thật từ Game radar/item_template)
+    // 5. Tính toán bậc so le (stagger tiers) cho NPC & Quái để các nhãn liền kề không bao giờ đè lên nhau
+    const npcTiers = [];
+    if (currentMapData.npcs) {
+        for (let i = 0; i < currentMapData.npcs.length; i++) {
+            const n = currentMapData.npcs[i];
+            const nx = n.x !== undefined ? n.x : n[1];
+            const ny = n.y !== undefined ? n.y : n[2];
+            const used = new Set();
+            for (let j = 0; j < i; j++) {
+                const prev = currentMapData.npcs[j];
+                const px = prev.x !== undefined ? prev.x : prev[1];
+                const py = prev.y !== undefined ? prev.y : prev[2];
+                if (Math.abs(nx - px) < 105 && Math.abs(ny - py) < 75) {
+                    used.add(npcTiers[j]);
+                }
+            }
+            let t = 0;
+            while (used.has(t) && t < 3) t++;
+            npcTiers[i] = t;
+        }
+    }
+
+    const mobTiers = [];
+    if (currentMapData.mobs) {
+        for (let i = 0; i < currentMapData.mobs.length; i++) {
+            const m = currentMapData.mobs[i];
+            const used = new Set();
+            for (let j = 0; j < i; j++) {
+                const prev = currentMapData.mobs[j];
+                if (Math.abs(m.x - prev.x) < 105 && Math.abs(m.y - prev.y) < 75) {
+                    used.add(mobTiers[j]);
+                }
+            }
+            // Tránh đè lên NPC gần kề
+            if (currentMapData.npcs) {
+                for (let j = 0; j < currentMapData.npcs.length; j++) {
+                    const n = currentMapData.npcs[j];
+                    const nx = n.x !== undefined ? n.x : n[1];
+                    const ny = n.y !== undefined ? n.y : n[2];
+                    if (Math.abs(m.x - nx) < 105 && Math.abs(m.y - ny) < 75) {
+                        used.add(npcTiers[j]);
+                    }
+                }
+            }
+            let t = 0;
+            while (used.has(t) && t < 3) t++;
+            mobTiers[i] = t;
+        }
+    }
+
+    // 6. Vẽ Quái Mob (Với Sprite Icon thật từ Game radar/item_template)
     if (currentMapData.mobs) {
         currentMapData.mobs.forEach((m, idx) => {
             const isSelected = (draggingEntity === idx && dragType === 'mob');
             const iconId = m.iconId || 7466;
             const img = getMobImage(iconId);
+            const mobTier = mobTiers[idx] || 0;
 
             // Đổ bóng dưới chân quái
             ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -637,30 +691,49 @@ function renderCanvas() {
             ctx.fillStyle = '#00e676';
             ctx.fillRect(barX, barY, barW, barH);
 
-            // Tên Quái & Cấp
+            // Tên Quái & Cấp (So le chống đè chữ)
+            const mobBoxY = barY - 18 - (mobTier * 22);
+
+            if (mobTier > 0) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 82, 82, 0.45)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                ctx.beginPath();
+                ctx.moveTo(m.x, mobBoxY + 16);
+                ctx.lineTo(m.x, barY - 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
             ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'alphabetic';
             const mobLabel = `Lv.${m.level} ${m.name || 'Quái #' + m.id}`;
             const mtw = ctx.measureText(mobLabel).width;
 
-            ctx.fillStyle = 'rgba(15, 20, 30, 0.85)';
-            ctx.fillRect(m.x - mtw/2 - 5, barY - 18, mtw + 10, 16);
+            ctx.fillStyle = 'rgba(15, 20, 30, 0.88)';
+            ctx.fillRect(m.x - mtw/2 - 5, mobBoxY, mtw + 10, 16);
             ctx.strokeStyle = '#ff5252';
             ctx.lineWidth = 1;
-            ctx.strokeRect(m.x - mtw/2 - 5, barY - 18, mtw + 10, 16);
+            ctx.strokeRect(m.x - mtw/2 - 5, mobBoxY, mtw + 10, 16);
 
             ctx.fillStyle = '#ff8a80';
-            ctx.fillText(mobLabel, m.x, barY - 6);
+            ctx.fillText(mobLabel, m.x, mobBoxY + 12);
 
-            // Tọa độ nhỏ bên dưới
+            // Tọa độ nhỏ bên dưới có badge nền tối chống lóa và so le chống đè
+            const mobCoordY = m.y + 16 + (mobTier % 2 === 1 ? 13 : 0);
+            const mCoordText = `(${m.x}, ${m.y})`;
             ctx.font = '9px monospace';
+            const mcw = ctx.measureText(mCoordText).width;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            ctx.fillRect(m.x - mcw/2 - 3, mobCoordY - 9, mcw + 6, 12);
             ctx.fillStyle = '#ffd54f';
-            ctx.fillText(`(${m.x}, ${m.y})`, m.x, m.y + 16);
+            ctx.fillText(mCoordText, m.x, mobCoordY);
         });
     }
 
-    // 6. Vẽ NPC (Với Sprite Avatar thật trong Game!)
+    // 7. Vẽ NPC (Với Sprite Avatar thật trong Game!)
     if (currentMapData.npcs) {
         currentMapData.npcs.forEach((n, idx) => {
             const nx = n.x !== undefined ? n.x : n[1];
@@ -669,6 +742,7 @@ function renderCanvas() {
             const nname = n.name || ('NPC #' + nid);
             const navatar = n.avatar || 0;
             const isSelected = (draggingEntity === idx && dragType === 'npc');
+            const npcTier = npcTiers[idx] || 0;
 
             // Đổ bóng dưới chân NPC
             ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -712,13 +786,27 @@ function renderCanvas() {
                 ctx.fillText('🧙', nx, ny - 24);
             }
 
-            // Banner Tên NPC (Màu vàng rực rỡ)
+            // Banner Tên NPC (So le chống đè chữ và có đường chỉ tâm khi nâng cao)
+            const nameBoxY = spriteY - 20 - (npcTier * 24);
+
+            if (npcTier > 0) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.45)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                ctx.beginPath();
+                ctx.moveTo(nx, nameBoxY + 17);
+                ctx.lineTo(nx, spriteY - 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
             ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
             const nameLabel = `🧙 ${nname}`;
             const ntw = ctx.measureText(nameLabel).width;
 
-            const nameBoxY = spriteY - 20;
             ctx.fillStyle = 'rgba(20, 20, 10, 0.9)';
             ctx.fillRect(nx - ntw/2 - 6, nameBoxY, ntw + 12, 17);
             ctx.strokeStyle = '#ffd700';
@@ -728,10 +816,15 @@ function renderCanvas() {
             ctx.fillStyle = '#ffd700';
             ctx.fillText(nameLabel, nx, nameBoxY + 12);
 
-            // Tọa độ nhỏ bên dưới
+            // Tọa độ nhỏ bên dưới có badge nền tối chống lóa và so le chống đè
+            const npcCoordY = ny + 16 + (npcTier % 2 === 1 ? 13 : 0);
+            const nCoordText = `(${nx}, ${ny})`;
             ctx.font = '9px monospace';
+            const ncw = ctx.measureText(nCoordText).width;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            ctx.fillRect(nx - ncw/2 - 3, npcCoordY - 9, ncw + 6, 12);
             ctx.fillStyle = '#fff9c4';
-            ctx.fillText(`(${nx}, ${ny})`, nx, ny + 16);
+            ctx.fillText(nCoordText, nx, npcCoordY);
         });
     }
 }
@@ -970,14 +1063,15 @@ canvas.addEventListener('mousedown', function(e) {
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    // Check click NPC
+    // Check click NPC (Hỗ trợ click vào Sprite hoặc Banner Tên ở mọi bậc so le)
     if (currentMapData.npcs) {
         for (let i = 0; i < currentMapData.npcs.length; i++) {
             const n = currentMapData.npcs[i];
             const nx = n.x !== undefined ? n.x : n[1];
             const ny = n.y !== undefined ? n.y : n[2];
             const dist = Math.hypot(nx - mouseX, (ny - 24) - mouseY);
-            if (dist <= 28) {
+            const inVerticalRange = Math.abs(nx - mouseX) <= 45 && mouseY >= (ny - 110) && mouseY <= (ny + 15);
+            if (dist <= 28 || inVerticalRange) {
                 draggingEntity = i;
                 dragType = 'npc';
                 renderCanvas();
@@ -986,12 +1080,13 @@ canvas.addEventListener('mousedown', function(e) {
         }
     }
 
-    // Check click Mob
+    // Check click Mob (Hỗ trợ click vào Sprite hoặc Banner Tên ở mọi bậc so le)
     if (currentMapData.mobs) {
         for (let i = 0; i < currentMapData.mobs.length; i++) {
             const m = currentMapData.mobs[i];
             const dist = Math.hypot(m.x - mouseX, (m.y - 18) - mouseY);
-            if (dist <= 26) {
+            const inVerticalRange = Math.abs(m.x - mouseX) <= 45 && mouseY >= (m.y - 100) && mouseY <= (m.y + 15);
+            if (dist <= 26 || inVerticalRange) {
                 draggingEntity = i;
                 dragType = 'mob';
                 renderCanvas();
