@@ -75,13 +75,15 @@
                                 <span style="color: var(--text-muted); font-style: italic;">Không có vật phẩm</span>
                             @endif
                         </td>
-                        <td style="text-align: right;">
-                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; margin-right: 5px;" onclick="openEditModal({{ json_encode($code) }})">
-                                Sửa
-                            </button>
-                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteGiftcode({{ $code->id }})">
-                                Xóa
-                            </button>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <div style="display: inline-flex; gap: 6px;">
+                                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="openEditModal({{ json_encode($code) }})">
+                                    Sửa
+                                </button>
+                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteGiftcode({{ $code->id }})">
+                                    Xóa
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 @endforeach

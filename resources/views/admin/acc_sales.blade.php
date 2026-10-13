@@ -97,15 +97,17 @@
                                         <span>--</span>
                                     @endif
                                 </td>
-                                <td style="padding: 10px; text-align: right; display: flex; justify-content: flex-end; gap: 8px;">
-                                    @if($item->status === 'selling')
-                                        <button class="btn btn-secondary cancel-listing-btn" data-id="{{ $item->id }}" style="font-size: 0.75rem; padding: 4px 8px; border-color: #ff1744; color: #ff1744;">Hủy bán</button>
-                                    @elseif($item->status === 'sold' && $item->payout_status === 'pending')
-                                        <button class="btn approve-payout-btn" data-id="{{ $item->id }}" style="font-size: 0.75rem; padding: 4px 8px; background: #00e676; border-color: #00e676;">Duyệt ví</button>
-                                        <button class="btn btn-secondary refund-btn" data-id="{{ $item->id }}" style="font-size: 0.75rem; padding: 4px 8px; border-color: #ff1744; color: #ff1744;">Hoàn tiền</button>
-                                    @else
-                                        <span style="color: var(--text-muted);">Không</span>
-                                    @endif
+                                <td style="padding: 10px; text-align: right; white-space: nowrap;">
+                                    <div style="display: inline-flex; justify-content: flex-end; gap: 8px;">
+                                        @if($item->status === 'selling')
+                                            <button class="btn btn-secondary cancel-listing-btn" data-id="{{ $item->id }}" style="font-size: 0.75rem; padding: 4px 8px; border-color: #ff1744; color: #ff1744;">Hủy bán</button>
+                                        @elseif($item->status === 'sold' && $item->payout_status === 'pending')
+                                            <button class="btn approve-payout-btn" data-id="{{ $item->id }}" style="font-size: 0.75rem; padding: 4px 8px; background: #00e676; border-color: #00e676;">Duyệt ví</button>
+                                            <button class="btn btn-secondary refund-btn" data-id="{{ $item->id }}" style="font-size: 0.75rem; padding: 4px 8px; border-color: #ff1744; color: #ff1744;">Hoàn tiền</button>
+                                        @else
+                                            <span style="color: var(--text-muted);">Không</span>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

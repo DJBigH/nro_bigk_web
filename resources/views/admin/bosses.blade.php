@@ -171,13 +171,13 @@
                                     <span style="color: #555;">-</span>
                                 @endif
                             </td>
-                            <td style="text-align: right;">
+                            <td style="text-align: right; white-space: nowrap;">
                                 @if($isLive)
-                                    <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem; background: #d32f2f;" onclick="killBoss({{ $b['id'] }}, '{{ $b['name'] }}')">
+                                    <button class="btn btn-danger" style="padding: 5px 12px; font-size: 0.8rem; background: #d32f2f; white-space: nowrap;" onclick="killBoss({{ $b['id'] }}, '{{ $b['name'] }}')">
                                         🛑 THU HỒI
                                     </button>
                                 @else
-                                    <button class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #ff5722; font-weight: 700;" onclick="spawnDirectBoss({{ $b['id'] }}, '{{ $b['name'] }}')">
+                                    <button class="btn" style="padding: 5px 12px; font-size: 0.8rem; background: #ff5722; font-weight: 700; white-space: nowrap;" onclick="spawnDirectBoss({{ $b['id'] }}, '{{ $b['name'] }}')">
                                         ⚡ HỒI SINH NGAY
                                     </button>
                                 @endif

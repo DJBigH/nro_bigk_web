@@ -70,48 +70,45 @@
                                 <span class="badge badge-primary">ADMIN</span>
                             @endif
                         </td>
-                        <td style="text-align: right; display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
-                            <!-- Buff Items / Gold / Ruby -->
-                            <button class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #e91e63;" onclick="openBuffModal({{ $acc->id }}, '{{ $acc->username }}')">
-                                🎁 BUFF ĐỒ / NGỌC
-                            </button>
-
-                            <!-- Set Points -->
-                            @if($player)
-                                <button class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #00bcd4;" onclick="openPointModal({{ $acc->id }}, '{{ $acc->username }}', '{{ $player->name }}')">
-                                    ⚡ SET CHỈ SỐ
-                                </button>
-                                <button class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #673ab7;" onclick="openInspectModal({{ $acc->id }}, '{{ $acc->username }}', '{{ $player->name }}')">
-                                    🔍 SOI ĐỒ
-                                </button>
-                            @endif
-
-                            <!-- Kick -->
-                            <button class="btn" style="padding: 5px 10px; font-size: 0.8rem; background: #ff9800;" onclick="kickPlayer({{ $acc->id }}, '{{ $acc->username }}')">
-                                👟 KICK
-                            </button>
-
-                            <!-- Role Toggle -->
-                            @if($acc->is_admin == 1)
-                                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8rem;" onclick="toggleAdmin({{ $acc->id }}, 'remove')">
-                                    - Admin
-                                </button>
-                            @else
-                                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8rem;" onclick="toggleAdmin({{ $acc->id }}, 'set')">
-                                    + Admin
-                                </button>
-                            @endif
-
-                            <!-- Ban Toggle -->
-                            @if($acc->ban > 0)
-                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem; background: #4caf50;" onclick="toggleBan({{ $acc->id }}, 'unban')" id="ban-btn-{{ $acc->id }}">
-                                    Mở
-                                </button>
-                            @else
-                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="toggleBan({{ $acc->id }}, 'ban')" id="ban-btn-{{ $acc->id }}">
-                                    Khóa
-                                </button>
-                            @endif
+                        <td style="text-align: right; vertical-align: middle; white-space: nowrap;">
+                            <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <button class="btn" style="padding: 5px 10px; font-size: 0.78rem; background: #e91e63; font-weight: 700; white-space: nowrap;" onclick="openBuffModal({{ $acc->id }}, '{{ $acc->username }}')">
+                                        🎁 BUFF ĐỒ / NGỌC
+                                    </button>
+                                    @if($player)
+                                        <button class="btn" style="padding: 5px 10px; font-size: 0.78rem; background: #00bcd4; font-weight: 700; white-space: nowrap;" onclick="openPointModal({{ $acc->id }}, '{{ $acc->username }}', '{{ $player->name }}')">
+                                            ⚡ SET CHỈ SỐ
+                                        </button>
+                                        <button class="btn" style="padding: 5px 10px; font-size: 0.78rem; background: #673ab7; font-weight: 700; white-space: nowrap;" onclick="openInspectModal({{ $acc->id }}, '{{ $acc->username }}', '{{ $player->name }}')">
+                                            🔍 SOI ĐỒ
+                                        </button>
+                                    @endif
+                                </div>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <button class="btn" style="padding: 4px 10px; font-size: 0.75rem; background: #ff9800; font-weight: 600; white-space: nowrap;" onclick="kickPlayer({{ $acc->id }}, '{{ $acc->username }}')">
+                                        👟 KICK
+                                    </button>
+                                    @if($acc->is_admin == 1)
+                                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;" onclick="toggleAdmin({{ $acc->id }}, 'remove')">
+                                            - Admin
+                                        </button>
+                                    @else
+                                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;" onclick="toggleAdmin({{ $acc->id }}, 'set')">
+                                            + Admin
+                                        </button>
+                                    @endif
+                                    @if($acc->ban > 0)
+                                        <button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.75rem; background: #4caf50; font-weight: 600; white-space: nowrap;" onclick="toggleBan({{ $acc->id }}, 'unban')" id="ban-btn-{{ $acc->id }}">
+                                            🔓 Mở Khóa
+                                        </button>
+                                    @else
+                                        <button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;" onclick="toggleBan({{ $acc->id }}, 'ban')" id="ban-btn-{{ $acc->id }}">
+                                            🔒 Khóa
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 @endforeach
@@ -369,10 +366,14 @@ function openInspectModal(accId, username, charName) {
                 return;
             }
             currentInspectData = d;
+            const srcBadge = (d.source === 'db') 
+                ? '<span class="badge" style="background: rgba(255, 152, 0, 0.2); color: #ff9800; border: 1px solid #ff9800; font-size: 0.75rem; margin-left: 8px;">💾 OFFLINE (DATABASE)</span>'
+                : '<span class="badge" style="background: rgba(0, 230, 118, 0.2); color: #00e676; border: 1px solid #00e676; font-size: 0.75rem; margin-left: 8px;">⚡ ONLINE (RAM REALTIME)</span>';
+            document.getElementById('inspectModalTitle').innerHTML = 'SOI & SỬA TRANG BỊ: ' + charName + ' (' + username + ') ' + srcBadge;
             switchInspectTab('body');
         })
         .catch(() => {
-            document.getElementById('inspectItemsList').innerHTML = '<p style="color: #ff5252; text-align: center; grid-column: 1 / -1;">Lỗi kết nối Game Server port 14446</p>';
+            document.getElementById('inspectItemsList').innerHTML = '<p style="color: #ff5252; text-align: center; grid-column: 1 / -1;">Lỗi kết nối máy chủ</p>';
         });
 }
 

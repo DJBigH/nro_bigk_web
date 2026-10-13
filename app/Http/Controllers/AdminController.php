@@ -268,27 +268,140 @@ class AdminController extends Controller
     }
 
     /**
-     * Realtime Item Inspector
+     * Realtime Item Inspector (Supports both RAM Online and Database Offline)
      */
     public function playerItems($id)
     {
         $account = Account::findOrFail($id);
+        
+        // 1. Thử gọi Game Server API nếu player đang online
         $res = $this->callGameApi('/api/player/items', ['username' => $account->username], 'GET');
-        return response()->json($res);
+        if (!empty($res['success'])) {
+            $res['source'] = 'ram';
+            return response()->json($res);
+        }
+
+        // 2. Nếu không online hoặc Game Server chưa bật, đọc trực tiếp từ MySQL Database (offline check)
+        $player = DB::table('player')->where('account_id', $account->id)->first();
+        if (!$player) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tài khoản chưa tạo nhân vật trong game!'
+            ]);
+        }
+
+        $itemTemplates = DB::table('item_template')->select('id', 'NAME', 'icon_id')->get()->keyBy('id');
+        $optTemplates = DB::table('item_option_template')->pluck('NAME', 'id')->toArray();
+
+        $parseItems = function($rawJson) use ($itemTemplates, $optTemplates) {
+            $slots = json_decode($rawJson, true);
+            if (!is_array($slots)) return [];
+            $items = [];
+            foreach ($slots as $idx => $sStr) {
+                $s = is_string($sStr) ? json_decode($sStr, true) : $sStr;
+                if (!is_array($s) || count($s) < 3) continue;
+                $itemId = (int) $s[0];
+                if ($itemId === -1) continue;
+                $qty = (int) $s[1];
+                $tpl = $itemTemplates[$itemId] ?? null;
+
+                $options = [];
+                $optsRaw = is_string($s[2]) ? json_decode($s[2], true) : $s[2];
+                if (is_array($optsRaw)) {
+                    foreach ($optsRaw as $oStr) {
+                        $o = is_string($oStr) ? json_decode($oStr, true) : $oStr;
+                        if (is_array($o) && count($o) >= 2) {
+                            $optId = (int) $o[0];
+                            $param = (int) $o[1];
+                            $optNameTpl = $optTemplates[$optId] ?? ("Option #{$optId}");
+                            $formattedName = str_replace('#', (string)$param, $optNameTpl);
+                            $options[] = [
+                                'id' => $optId,
+                                'param' => $param,
+                                'name' => $formattedName
+                            ];
+                        }
+                    }
+                }
+
+                $items[] = [
+                    'index' => (int) $idx,
+                    'templateId' => $itemId,
+                    'name' => $tpl ? $tpl->NAME : ("Vật phẩm #{$itemId}"),
+                    'iconId' => $tpl ? $tpl->icon_id : 0,
+                    'quantity' => $qty,
+                    'options' => $options
+                ];
+            }
+            return $items;
+        };
+
+        $bodyItems = $parseItems($player->items_body ?? '[]');
+        $bagItems = $parseItems($player->items_bag ?? '[]');
+
+        return response()->json([
+            'success' => true,
+            'source' => 'db',
+            'username' => $account->username,
+            'body' => $bodyItems,
+            'bag' => $bagItems
+        ]);
     }
 
     public function playerItemUpdate(Request $request, $id)
     {
         $account = Account::findOrFail($id);
-        $data = [
+        $type = $request->input('type', 'bag');
+        $index = (int) $request->input('index', 0);
+        $quantity = (int) $request->input('quantity', 1);
+        $optionsInput = $request->input('options', []);
+
+        // 1. Thử gọi Game Server API nếu player online
+        $res = $this->callGameApi('/api/player/item/update', [
             'username' => $account->username,
-            'type' => $request->input('type', 'bag'),
-            'index' => (int) $request->input('index', 0),
-            'quantity' => (int) $request->input('quantity', 1),
-            'options' => $request->input('options', [])
-        ];
-        $res = $this->callGameApi('/api/player/item/update', $data);
-        return response()->json($res);
+            'type' => $type,
+            'index' => $index,
+            'quantity' => $quantity,
+            'options' => $optionsInput
+        ]);
+
+        if (!empty($res['success'])) {
+            return response()->json($res);
+        }
+
+        // 2. Nếu offline, cập nhật trực tiếp vào MySQL database
+        $column = ($type === 'body') ? 'items_body' : 'items_bag';
+        $player = DB::table('player')->where('account_id', $account->id)->first();
+        if (!$player) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy nhân vật trong Database!']);
+        }
+
+        $slots = json_decode($player->{$column}, true);
+        if (!is_array($slots) || !isset($slots[$index])) {
+            return response()->json(['success' => false, 'message' => "Không tìm thấy ô #{$index} trong {$type}!"]);
+        }
+
+        $s = is_string($slots[$index]) ? json_decode($slots[$index], true) : $slots[$index];
+        if (!is_array($s) || $s[0] == -1) {
+            return response()->json(['success' => false, 'message' => "Ô #{$index} đang trống!"]);
+        }
+
+        $s[1] = $quantity;
+        $newOptsArr = [];
+        foreach ($optionsInput as $opt) {
+            $newOptsArr[] = "[" . (int)$opt['id'] . "," . (int)$opt['param'] . "]";
+        }
+        $s[2] = json_encode($newOptsArr);
+        $slots[$index] = json_encode($s);
+
+        DB::table('player')->where('account_id', $account->id)->update([
+            $column => json_encode($slots)
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã lưu thay đổi món đồ vào Database thành công (nhân vật offline)!'
+        ]);
     }
 
     /**
@@ -1304,7 +1417,9 @@ class AdminController extends Controller
     public function mapEditor(Request $request)
     {
         $maps = DB::table('map_template')->select('id', DB::raw('COALESCE(NAME, name) as name'))->orderBy('id', 'asc')->get();
-        return view('admin.map_editor', compact('maps'));
+        $npcTemplates = DB::table('npc_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'avatar')->orderBy('id', 'asc')->get();
+        $mobTemplates = DB::table('mob_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'hp')->orderBy('id', 'asc')->get();
+        return view('admin.map_editor', compact('maps', 'npcTemplates', 'mobTemplates'));
     }
 
     public function mapEditorData(Request $request)
@@ -1318,6 +1433,9 @@ class AdminController extends Controller
 
             $mapName = $map->NAME ?? $map->name ?? ("Bản đồ #" . $mapId);
 
+            $npcTemplates = DB::table('npc_template')->get()->keyBy('id');
+            $mobTemplates = DB::table('mob_template')->get()->keyBy('id');
+
             // 1. Parse NPCs
             $npcsRaw = [];
             if (!empty($map->npcs)) {
@@ -1326,7 +1444,15 @@ class AdminController extends Controller
             $npcs = [];
             foreach ($npcsRaw as $n) {
                 if (is_array($n) && count($n) >= 3) {
-                    $npcs[] = [(int)$n[0], (int)$n[1], (int)$n[2]];
+                    $npcId = (int)$n[0];
+                    $t = $npcTemplates[$npcId] ?? null;
+                    $npcs[] = [
+                        'id' => $npcId,
+                        'x' => (int)$n[1],
+                        'y' => (int)$n[2],
+                        'name' => $t ? ($t->NAME ?? $t->name ?? "NPC #$npcId") : "NPC #$npcId",
+                        'avatar' => $t ? (int)$t->avatar : 0
+                    ];
                 }
             }
 
@@ -1341,12 +1467,15 @@ class AdminController extends Controller
                     $m = json_decode($m, true);
                 }
                 if (is_array($m) && count($m) >= 5) {
+                    $mobId = (int)$m[0];
+                    $t = $mobTemplates[$mobId] ?? null;
                     $mobs[] = [
-                        'id' => (int)$m[0],
+                        'id' => $mobId,
                         'level' => (int)$m[1],
                         'hp' => (int)$m[2],
                         'x' => (int)$m[3],
-                        'y' => (int)$m[4]
+                        'y' => (int)$m[4],
+                        'name' => $t ? ($t->NAME ?? $t->name ?? "Quái #$mobId") : "Quái #$mobId"
                     ];
                 }
             }
@@ -1396,23 +1525,34 @@ class AdminController extends Controller
     {
         try {
             $mapId = (int) $request->input('map_id');
-            $npcs = $request->input('npcs', []);
-            $mobs = $request->input('mobs', []);
+            $npcsInput = $request->input('npcs', []);
+            $mobsInput = $request->input('mobs', []);
 
-            // Encode mobs back to format ["[\"mobId\",level,hp,x,y]", ...]
+            $npcsFormatted = [];
+            foreach ($npcsInput as $n) {
+                if (is_array($n)) {
+                    $id = (int)($n['id'] ?? $n[0] ?? 0);
+                    $x = (int)($n['x'] ?? $n[1] ?? 0);
+                    $y = (int)($n['y'] ?? $n[2] ?? 0);
+                    $npcsFormatted[] = [$id, $x, $y];
+                }
+            }
+
             $mobsFormatted = [];
-            foreach ($mobs as $m) {
-                $mobsFormatted[] = json_encode([
-                    (int)$m['id'],
-                    (int)($m['level'] ?? 1),
-                    (int)($m['hp'] ?? 100),
-                    (int)$m['x'],
-                    (int)$m['y']
-                ]);
+            foreach ($mobsInput as $m) {
+                if (is_array($m)) {
+                    $mobsFormatted[] = json_encode([
+                        (int)($m['id'] ?? $m[0] ?? 0),
+                        (int)($m['level'] ?? $m[1] ?? 1),
+                        (int)($m['hp'] ?? $m[2] ?? 100),
+                        (int)($m['x'] ?? $m[3] ?? 0),
+                        (int)($m['y'] ?? $m[4] ?? 0)
+                    ]);
+                }
             }
 
             DB::table('map_template')->where('id', $mapId)->update([
-                'npcs' => json_encode($npcs),
+                'npcs' => json_encode($npcsFormatted),
                 'mobs' => json_encode($mobsFormatted),
             ]);
 

@@ -112,15 +112,17 @@
                                     {{ $d->is_active ? '● ĐANG BẬT' : '○ ĐÃ TẮT' }}
                                 </button>
                             </td>
-                            <td style="text-align: right;">
-                                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.78rem; margin-right: 5px;" 
-                                        onclick="openEditDropModal({{ $d->id }}, {{ $d->quantity_min }}, {{ $d->quantity_max }}, {{ $d->rate }})">
-                                    ✏️ Sửa
-                                </button>
-                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.78rem; background: #d32f2f;" 
-                                        onclick="deleteDrop({{ $d->id }})">
-                                    🗑️
-                                </button>
+                            <td style="text-align: right; white-space: nowrap;">
+                                <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.78rem;" 
+                                            onclick="openEditDropModal({{ $d->id }}, {{ $d->quantity_min }}, {{ $d->quantity_max }}, {{ $d->rate }})">
+                                        ✏️ Sửa
+                                    </button>
+                                    <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.78rem; background: #d32f2f;" 
+                                            onclick="deleteDrop({{ $d->id }})">
+                                        🗑️
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @endforeach

@@ -42,13 +42,15 @@
                                 <span class="badge badge-danger">TẮT</span>
                             @endif
                         </td>
-                        <td style="text-align: right;">
-                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem; margin-right: 5px;" onclick="openEditModal({{ $file }})">
-                                Sửa
-                            </button>
-                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteDownload({{ $file->id }})">
-                                Xóa
-                            </button>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="openEditModal({{ $file }})">
+                                    Sửa
+                                </button>
+                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteDownload({{ $file->id }})">
+                                    Xóa
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 @endforeach

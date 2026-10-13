@@ -63,15 +63,17 @@
                                     💎 +{{ number_format($a->money) }}
                                 </span>
                             </td>
-                            <td style="text-align: right;">
-                                <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.78rem; margin-right: 5px;" 
-                                        onclick="openEditModal({{ $a->id }}, '{{ addslashes($a->info1) }}', '{{ addslashes($a->info2) }}', {{ $a->money }})">
-                                    ✏️ Sửa
-                                </button>
-                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.78rem; background: #d32f2f;" 
-                                        onclick="deleteAchievement({{ $a->id }})">
-                                    🗑️
-                                </button>
+                            <td style="text-align: right; white-space: nowrap;">
+                                <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                                    <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.78rem;" 
+                                            onclick="openEditModal({{ $a->id }}, '{{ addslashes($a->info1) }}', '{{ addslashes($a->info2) }}', {{ $a->money }})">
+                                        ✏️ Sửa
+                                    </button>
+                                    <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.78rem; background: #d32f2f;" 
+                                            onclick="deleteAchievement({{ $a->id }})">
+                                        🗑️
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @endforeach

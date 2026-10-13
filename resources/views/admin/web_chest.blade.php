@@ -72,7 +72,7 @@
                             @endif
                         </td>
                         <td style="font-size: 0.9rem; color: var(--text-muted);">{{ $item->created_at }}</td>
-                        <td style="text-align: right;">
+                        <td style="text-align: right; white-space: nowrap;">
                             <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteChestItem({{ $item->id }}, '{{ $tpl->NAME ?? 'vật phẩm' }}', '{{ $item->account->username ?? '' }}')">
                                 Xóa/Thu hồi
                             </button>

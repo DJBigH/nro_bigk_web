@@ -84,13 +84,15 @@
                                 <span class="badge badge-danger">DISABLE</span>
                             @endif
                         </td>
-                        <td style="text-align: right;">
-                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="openEditModal({{ $item }})">
-                                Sửa
-                            </button>
-                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteSpinItem({{ $item->id }})">
-                                Xóa
-                            </button>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <div style="display: inline-flex; gap: 6px;">
+                                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="openEditModal({{ $item }})">
+                                    Sửa
+                                </button>
+                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteSpinItem({{ $item->id }})">
+                                    Xóa
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 @endforeach
