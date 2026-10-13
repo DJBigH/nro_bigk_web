@@ -21,30 +21,53 @@
 
 <!-- Stats Grid Realtime -->
 <div class="summary-grid" style="grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px;">
-    <div class="card summary-card">
-        <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Người Chơi Online (RAM)</div>
-        <div class="summary-val" id="onlineCountVal" style="color: #00e676;">{{ number_format($stats['online_count']) }}</div>
-        <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">Đang kết nối trực tiếp</div>
-    </div>
-    
-    <div class="card summary-card">
-        <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">RAM Máy Chủ Sử Dụng</div>
-        <div class="summary-val" id="memoryUsageVal" style="color: #00bcd4;">
-            {{ $stats['used_memory_mb'] }} <span style="font-size: 1rem; color: #888;">/ {{ $stats['max_memory_mb'] }} MB</span>
+    <div class="card summary-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Người Chơi Online (RAM)</div>
+            <div class="summary-val" id="onlineCountVal" style="color: #00e676; margin-top: 8px;">{{ number_format($stats['online_count']) }}</div>
         </div>
-        <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">JVM Heap Memory</div>
+        <div style="font-size: 0.8rem; color: #888; margin-top: 10px;">Đang kết nối trực tiếp</div>
     </div>
     
-    <div class="card summary-card">
-        <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Tổng Tài Khoản</div>
-        <div class="summary-val" id="totalUsersVal" style="color: var(--primary);">{{ number_format($stats['total_users']) }}</div>
-        <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">Đăng ký trong DB</div>
+    <div class="card summary-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">RAM Máy Chủ Sử Dụng</div>
+            <div class="summary-val" id="memoryUsageVal" style="color: #00bcd4; margin-top: 8px; display: flex; align-items: baseline; gap: 6px; flex-wrap: nowrap; white-space: nowrap; overflow: hidden;">
+                <span id="memUsedNum" style="font-size: 1.6rem; color: #00bcd4; font-family: 'Orbitron', sans-serif; font-weight: 800;">{{ number_format($stats['used_memory_mb'] ?? 0) }}</span>
+                <span id="memMaxText" style="font-size: 0.82rem; color: #888; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap;">/ {{ number_format($stats['max_memory_mb'] ?? 4064) }} MB</span>
+            </div>
+        </div>
+        <div style="margin-top: 10px;">
+            @php
+                $usedMb = $stats['used_memory_mb'] ?? 0;
+                $maxMb = $stats['max_memory_mb'] ?? 4064;
+                $pct = $maxMb > 0 ? min(round(($usedMb / $maxMb) * 100, 1), 100) : 0;
+                $barColor = $pct >= 90 ? '#ff5252' : ($pct >= 75 ? '#ff9800' : '#00bcd4');
+            @endphp
+            <div style="background: rgba(255,255,255,0.08); height: 4px; border-radius: 2px; overflow: hidden;">
+                <div id="ramProgressBar" style="width: {{ $pct }}%; height: 100%; background: {{ $barColor }}; border-radius: 2px; transition: width 0.3s ease, background 0.3s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; color: #888; margin-top: 4px;">
+                <span>JVM Heap</span>
+                <span id="ramPercentText" style="color: {{ $barColor }}; font-weight: 700; font-family: 'Orbitron', sans-serif;">{{ $pct }}%</span>
+            </div>
+        </div>
     </div>
     
-    <div class="card summary-card">
-        <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Gift Code Khả Dụng</div>
-        <div class="summary-val" id="giftCodesVal" style="color: #ff9800;">{{ number_format($stats['total_giftcodes']) }}</div>
-        <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">Thỏi Vàng & Hồng Ngọc</div>
+    <div class="card summary-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Tổng Tài Khoản</div>
+            <div class="summary-val" id="totalUsersVal" style="color: var(--primary); margin-top: 8px;">{{ number_format($stats['total_users']) }}</div>
+        </div>
+        <div style="font-size: 0.8rem; color: #888; margin-top: 10px;">Đăng ký trong DB</div>
+    </div>
+    
+    <div class="card summary-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Gift Code Khả Dụng</div>
+            <div class="summary-val" id="giftCodesVal" style="color: #ff9800; margin-top: 8px;">{{ number_format($stats['total_giftcodes']) }}</div>
+        </div>
+        <div style="font-size: 0.8rem; color: #888; margin-top: 10px;">Thỏi Vàng & Hồng Ngọc</div>
     </div>
 </div>
 
@@ -183,8 +206,28 @@ function pollDashboardData() {
             const onlineCountEl = document.getElementById('onlineCountVal');
             if (onlineCountEl) onlineCountEl.innerText = Number(s.online_count || 0).toLocaleString();
 
-            const memEl = document.getElementById('memoryUsageVal');
-            if (memEl) memEl.innerHTML = `${s.used_memory_mb || 0} <span style="font-size: 1rem; color: #888;">/ ${s.max_memory_mb || 0} MB</span>`;
+            const memUsed = Number(s.used_memory_mb || 0);
+            const memMax = Number(s.max_memory_mb || 4064);
+            const pct = memMax > 0 ? Math.min(Math.round((memUsed / memMax) * 1000) / 10, 100) : 0;
+            const barColor = pct >= 90 ? '#ff5252' : (pct >= 75 ? '#ff9800' : '#00bcd4');
+
+            const memUsedEl = document.getElementById('memUsedNum');
+            if (memUsedEl) memUsedEl.innerText = memUsed.toLocaleString();
+
+            const memMaxEl = document.getElementById('memMaxText');
+            if (memMaxEl) memMaxEl.innerText = `/ ${memMax.toLocaleString()} MB`;
+
+            const ramBar = document.getElementById('ramProgressBar');
+            if (ramBar) {
+                ramBar.style.width = `${pct}%`;
+                ramBar.style.background = barColor;
+            }
+
+            const ramPctEl = document.getElementById('ramPercentText');
+            if (ramPctEl) {
+                ramPctEl.innerText = `${pct}%`;
+                ramPctEl.style.color = barColor;
+            }
 
             const usersEl = document.getElementById('totalUsersVal');
             if (usersEl) usersEl.innerText = Number(s.total_users || 0).toLocaleString();
