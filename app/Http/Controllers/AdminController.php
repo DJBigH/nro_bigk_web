@@ -1555,13 +1555,26 @@ class AdminController extends Controller
                 return $m;
             });
 
+        $currentServerEvent = 0;
+        $eventConfigFile = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/event_config.properties";
+        if (file_exists($eventConfigFile)) {
+            $lines = file($eventConfigFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (str_starts_with(trim($line), 'current_event=')) {
+                    $parts = explode('=', trim($line), 2);
+                    $currentServerEvent = (int) ($parts[1] ?? 0);
+                    break;
+                }
+            }
+        }
+
         $npcTemplates = DB::table('npc_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'avatar')->orderBy('id', 'asc')->get();
         $radarMobIcons = DB::table('radar')->where('type', 0)->pluck('iconId', 'template')->toArray();
         $mobTemplates = DB::table('mob_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'hp')->orderBy('id', 'asc')->get();
         foreach ($mobTemplates as $mt) {
-            $mt->iconId = $radarMobIcons[$mt->id] ?? (7466 + ($mt->id % 12));
+            $mt->iconId = $radarMobIcons[$mt->id] ?? 0;
         }
-        return view('admin.map_editor', compact('maps', 'npcTemplates', 'mobTemplates'));
+        return view('admin.map_editor', compact('maps', 'npcTemplates', 'mobTemplates', 'currentServerEvent'));
     }
 
     public function mapEditorData(Request $request)
@@ -1612,7 +1625,7 @@ class AdminController extends Controller
                 if (is_array($m) && count($m) >= 5) {
                     $mobId = (int)$m[0];
                     $t = $mobTemplates[$mobId] ?? null;
-                    $iconId = $radarMobIcons[$mobId] ?? (7466 + ($mobId % 12));
+                    $iconId = $radarMobIcons[$mobId] ?? 0;
                     $mobs[] = [
                         'id' => $mobId,
                         'level' => (int)$m[1],
@@ -1948,12 +1961,32 @@ class AdminController extends Controller
     }
 
     /**
-     * Serve Item BG Decoration PNG directly with fallback
+     * Serve Item BG Decoration PNG directly with theme and fallback
      */
-    public function getItemBgImage($id)
+    public function getItemBgImage(Request $request, $id)
     {
         $id = (int) $id;
-        $path = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/item_bg_temp/x1/{$id}.png";
+        $theme = strtolower($request->input('theme', 'normal'));
+
+        $baseDir = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun";
+        $path = null;
+
+        if ($theme === 'tet' || $theme === '1') {
+            $p = "{$baseDir}/event/tet/x1/{$id}.png";
+            if (file_exists($p)) {
+                $path = $p;
+            }
+        } elseif ($theme === 'tuyet' || $theme === 'noel' || $theme === '2') {
+            $p = "{$baseDir}/event/tuyet/x1/{$id}.png";
+            if (file_exists($p)) {
+                $path = $p;
+            }
+        }
+
+        if (!$path) {
+            $path = "{$baseDir}/item_bg_temp/x1/{$id}.png";
+        }
+
         if (file_exists($path)) {
             return response()->file($path, [
                 'Content-Type' => 'image/png',
@@ -1967,6 +2000,49 @@ class AdminController extends Controller
         }
 
         abort(404);
+    }
+
+    /**
+     * Save active server event configuration
+     */
+    public function saveEventTheme(Request $request)
+    {
+        try {
+            $eventId = (int) $request->input('event_id', 0);
+            if ($eventId < 0 || $eventId > 10) {
+                return response()->json(['success' => false, 'message' => 'ID sự kiện không hợp lệ!']);
+            }
+
+            $eventConfigFile = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/event_config.properties";
+            $content = "#NRO Server Event Configuration\n";
+            $content .= "#Updated via Map Editor on " . date('Y-m-d H:i:s') . "\n";
+            $content .= "event_end_time=0\n";
+            $content .= "current_event=" . $eventId . "\n";
+
+            file_put_contents($eventConfigFile, $content);
+
+            $eventNames = [
+                0 => 'Mặc định (Bình thường)',
+                1 => 'Tết Nguyên Đán',
+                2 => 'Giáng Sinh (Tuyết rơi)',
+                3 => 'Trung Thu',
+                4 => 'Halloween',
+                5 => 'Mùa Hè',
+                6 => 'Giỗ Tổ Hùng Vương',
+                7 => 'Valentine',
+                8 => 'Đại Lễ 30/4 - 1/5',
+                9 => 'Tây Du Ký',
+                10 => 'Quốc Tế Thiếu Nhi 1/6'
+            ];
+            $eventName = $eventNames[$eventId] ?? "Sự kiện #$eventId";
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã lưu cài đặt sự kiện Máy chủ: {$eventName}!"
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+        }
     }
 
     /**

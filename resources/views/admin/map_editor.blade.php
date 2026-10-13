@@ -161,6 +161,19 @@
 
             <!-- Action Buttons -->
             <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                <!-- Event Theme Selector -->
+                <div style="display: flex; align-items: center; gap: 4px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 2px 6px;">
+                    <span style="font-size: 0.76rem; color: #8b949e; white-space: nowrap;">🎉 Sự kiện:</span>
+                    <select id="selectEventTheme" onchange="changeEventTheme(this.value)" class="form-input" style="padding: 2px 6px; font-size: 0.78rem; height: 26px; width: 140px; background: #0d1117; border-color: #30363d; color: #58a6ff; font-weight: 600;">
+                        <option value="normal" {{ ($currentServerEvent ?? 0) == 0 ? 'selected' : '' }}>🌿 Mặc định</option>
+                        <option value="tet" {{ ($currentServerEvent ?? 0) == 1 ? 'selected' : '' }}>🧧 Tết Nguyên Đán</option>
+                        <option value="tuyet" {{ ($currentServerEvent ?? 0) == 2 ? 'selected' : '' }}>❄️ Giáng Sinh (Tuyết)</option>
+                    </select>
+                    <button type="button" class="btn" onclick="saveEventThemeToServer()" title="Lưu và áp dụng sự kiện này cho máy chủ Game" style="background: #238636; color: #fff; border: none; font-size: 0.74rem; padding: 2px 7px; border-radius: 4px; height: 24px; cursor: pointer;">
+                        💾 Áp dụng
+                    </button>
+                </div>
+
                 <button type="button" class="btn" style="background: #21262d; color: #ffd700; border: 1px solid #d29922; font-size: 0.79rem; padding: 4px 9px; border-radius: 6px;" onclick="openAddNpcModal()">
                     🧙 Thêm NPC
                 </button>
@@ -318,8 +331,8 @@
         <input type="text" id="searchMobInput" placeholder="Tìm kiếm Quái..." oninput="filterMobTemplates()" class="form-input" style="margin-bottom: 12px;">
         <div id="mobTplGrid" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;">
             @foreach($mobTemplates as $mt)
-                <div class="mob-tpl-item" data-name="{{ strtolower($mt->name) }}" data-id="{{ $mt->id }}" onclick="selectMobToAdd({{ $mt->id }}, '{{ addslashes($mt->name) }}', {{ $mt->hp ?? 100 }}, {{ $mt->iconId ?? 7466 }})" style="background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <img src="/images/icons/{{ $mt->iconId }}.png" onerror="this.src='/images/no_image.png'" style="width: 32px; height: 32px; object-fit: contain;">
+                <div class="mob-tpl-item" data-name="{{ strtolower($mt->name) }}" data-id="{{ $mt->id }}" onclick="selectMobToAdd({{ $mt->id }}, '{{ addslashes($mt->name) }}', {{ $mt->hp ?? 100 }}, {{ $mt->iconId ?? 0 }})" style="background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <img src="/images/mobs/{{ $mt->id }}.png" onerror="if ({{ $mt->iconId ?? 0 }} > 0) { this.src='/images/icons/{{ $mt->iconId }}.png'; } else { this.src='/images/no_image.png'; }" style="width: 32px; height: 32px; object-fit: contain;">
                     <div style="overflow: hidden;">
                         <div style="color: #ff7b72; font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $mt->name }}</div>
                         <div style="color: #6e7681; font-size: 0.72rem;">HP: {{ number_format($mt->hp ?? 100) }}</div>
@@ -455,15 +468,23 @@ function getNpcImage(avatar) {
     return npcImageCache[avatar];
 }
 
-function getMobImage(iconId) {
-    const id = iconId && iconId > 0 ? iconId : 7466;
-    if (!mobImageCache[id]) {
+function getMobImage(mobId, iconId) {
+    const key = `mob_${mobId}_${iconId || 0}`;
+    if (!mobImageCache[key]) {
         const img = new Image();
-        img.src = `/images/icons/${id}.png`;
+        img.src = `/images/mobs/${mobId}.png`;
+        img.onerror = () => {
+            if (iconId && iconId > 0 && iconId !== 7466) {
+                img.src = `/images/icons/${iconId}.png`;
+                img.onerror = () => { img.src = '/images/no_image.png'; };
+            } else {
+                img.src = '/images/no_image.png';
+            }
+        };
         img.onload = () => requestAnimationFrame(renderCanvas);
-        mobImageCache[id] = img;
+        mobImageCache[key] = img;
     }
-    return mobImageCache[id];
+    return mobImageCache[key];
 }
 
 function getMapBgImage(bgId, layer = 0, bgType = 0) {
@@ -496,16 +517,63 @@ function getTileImage(tileId, tileIndex) {
     return tileImageCache[key];
 }
 
+let currentEventTheme = '{{ ($currentServerEvent ?? 0) == 1 ? "tet" : (($currentServerEvent ?? 0) == 2 ? "tuyet" : "normal") }}';
 const decoImageCache = {};
+
 function getDecoImage(imgId) {
     if (imgId === undefined || imgId === null || imgId < 0) return null;
-    if (!decoImageCache[imgId]) {
+    const cacheKey = `${imgId}_${currentEventTheme}`;
+    if (!decoImageCache[cacheKey]) {
         const img = new Image();
-        img.src = `/images/item_bg/${imgId}.png`;
+        const queryParam = currentEventTheme !== 'normal' ? `?theme=${currentEventTheme}` : '';
+        img.src = `/item-bg-image/${imgId}.png${queryParam}`;
         img.onload = () => requestAnimationFrame(renderCanvas);
-        decoImageCache[imgId] = img;
+        decoImageCache[cacheKey] = img;
     }
-    return decoImageCache[imgId];
+    return decoImageCache[cacheKey];
+}
+
+function changeEventTheme(theme) {
+    currentEventTheme = theme;
+    if (document.getElementById('addDecoModal') && document.getElementById('addDecoModal').style.display !== 'none') {
+        renderDecoTemplatesList();
+    }
+    requestAnimationFrame(renderCanvas);
+    renderRightInspector();
+    if (window.showToast) {
+        const nameMap = { 'normal': 'Mặc định (Bình thường)', 'tet': 'Tết Nguyên Đán', 'tuyet': 'Giáng Sinh (Tuyết rơi)' };
+        window.showToast(`Đã chuyển xem trước chủ đề: ${nameMap[theme] || theme}`, 'info');
+    }
+}
+
+function saveEventThemeToServer() {
+    const themeVal = document.getElementById('selectEventTheme') ? document.getElementById('selectEventTheme').value : currentEventTheme;
+    let eventId = 0;
+    if (themeVal === 'tet') eventId = 1;
+    else if (themeVal === 'tuyet') eventId = 2;
+
+    fetch("{{ route('admin.map_editor.save_theme') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ event_id: eventId })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            if (window.showToast) window.showToast(res.message, 'success');
+            else alert(res.message);
+        } else {
+            if (window.showToast) window.showToast(res.message, 'error');
+            else alert(res.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        if (window.showToast) window.showToast('Lỗi gửi yêu cầu lưu sự kiện!', 'error');
+    });
 }
 
 // =============================================================
@@ -936,8 +1004,8 @@ function renderCanvas() {
     if (currentMapData.mobs) {
         currentMapData.mobs.forEach((m, idx) => {
             const isSel = selectedEntity && selectedEntity.type === 'mob' && selectedEntity.index === idx;
-            const iconId = m.iconId || 7466;
-            const img = getMobImage(iconId);
+            const iconId = m.iconId || 0;
+            const img = getMobImage(m.id, iconId);
 
             const r = 15;
             const cy = m.y - r - 4;
@@ -1101,7 +1169,7 @@ function renderRightInspector() {
         mobList.innerHTML += `
             <div onclick="selectEntity('mob', ${idx})" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; cursor: pointer; background: ${isSel ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isSel ? '#00e5ff' : 'transparent'};">
                 <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
-                    <img src="/images/icons/${m.iconId || 7466}.png" onerror="this.src='/images/no_image.png'" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain;">
+                    <img src="/images/mobs/${m.id}.png" onerror="if (${m.iconId || 0} > 0) { this.src='/images/icons/${m.iconId}.png'; } else { this.src='/images/no_image.png'; }" style="width: 20px; height: 20px; border-radius: 4px; object-fit: contain;">
                     <span style="font-size: 0.8rem; color: #ff7b72; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.name || 'Quái #' + m.id}</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -1138,13 +1206,14 @@ function renderRightInspector() {
         if (decos.length === 0) {
             decoList.innerHTML = `<div style="padding: 6px; color: #8b949e; font-size: 0.75rem;">Không có vật trang trí nào trên bản đồ này.</div>`;
         } else {
+            const decoThemeParam = currentEventTheme !== 'normal' ? '?theme=' + currentEventTheme : '';
             let html = `<div style="display: flex; flex-direction: column; gap: 4px; max-height: 250px; overflow-y: auto; padding-right: 4px;">`;
             decos.forEach((d, idx) => {
                 const isSel = selectedEntity && selectedEntity.type === 'deco' && selectedEntity.index === idx;
                 html += `
                     <div onclick="selectEntity('deco', ${idx})" style="display: flex; align-items: center; justify-content: space-between; padding: 3px 6px; border-radius: 4px; cursor: pointer; background: ${isSel ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isSel ? '#00e5ff' : 'transparent'};">
                         <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
-                            <img src="/images/item_bg/${d.img_id}.png" onerror="this.src='/images/no_image.png'" style="width: 22px; height: 22px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 2px;">
+                            <img src="/item-bg-image/${d.img_id}.png${decoThemeParam}" onerror="this.src='/images/no_image.png'" style="width: 22px; height: 22px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 2px;">
                             <span style="font-size: 0.75rem; color: #7ee787; font-weight: 600;">#${idx} Tpl ${d.template_id}</span>
                             <span style="font-size: 0.7rem; color: #8b949e;">(L${d.layer})</span>
                         </div>
@@ -1569,11 +1638,12 @@ function renderDecoTemplatesList() {
 
     const showEntries = entries.slice(0, 120);
     let html = '';
+    const decoThemeQuery = currentEventTheme !== 'normal' ? '?theme=' + currentEventTheme : '';
     showEntries.forEach(([id, t]) => {
         html += `
             <div onclick="selectDecoToAdd(${id})" style="background: rgba(255,255,255,0.03); border: 1px solid #30363d; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='#7ee787'; this.style.background='rgba(35,134,54,0.15)';" onmouseout="this.style.borderColor='#30363d'; this.style.background='rgba(255,255,255,0.03)';">
                 <div style="height: 60px; width: 100%; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden;">
-                    <img src="/images/item_bg/${t.img_id}.png" onerror="this.src='/images/no_image.png'" style="max-height: 56px; max-width: 90%; object-fit: contain;">
+                    <img src="/item-bg-image/${t.img_id}.png${decoThemeQuery}" onerror="this.src='/images/no_image.png'" style="max-height: 56px; max-width: 90%; object-fit: contain;">
                 </div>
                 <div style="text-align: center; width: 100%;">
                     <div style="font-size: 0.78rem; font-weight: 700; color: #7ee787;">Mẫu #${id}</div>

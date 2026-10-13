@@ -24,6 +24,7 @@ Route::get('/guide/{id}', [DashboardController::class, 'guideShow'])->name('guid
 Route::get('/download', [DashboardController::class, 'download'])->name('download');
 Route::get('/images/icons/{id}.png', [AdminController::class, 'getItemIcon'])->name('item.icon');
 Route::get('/images/item_bg/{id}.png', [AdminController::class, 'getItemBgImage'])->name('item_bg.image');
+Route::get('/item-bg-image/{id}.png', [AdminController::class, 'getItemBgImage'])->name('item_bg.dynamic_image');
 
 // Guest only (login, register)
 Route::middleware('guest')->group(function () {
@@ -139,6 +140,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/map-editor/data', [AdminController::class, 'mapEditorData'])->name('map_editor.data');
     Route::get('/map-editor/item-bg-templates', [AdminController::class, 'getItemBgTemplatesApi'])->name('map_editor.item_bg_templates');
     Route::post('/map-editor/save', [AdminController::class, 'mapEditorSave'])->name('map_editor.save');
+    Route::post('/map-editor/save-theme', [AdminController::class, 'saveEventTheme'])->name('map_editor.save_theme');
 
     // Server & Build
     Route::get('/server-build', [AdminController::class, 'serverBuild'])->name('server_build');
