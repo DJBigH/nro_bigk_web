@@ -23,6 +23,7 @@ Route::get('/guide', [DashboardController::class, 'guide'])->name('guide');
 Route::get('/guide/{id}', [DashboardController::class, 'guideShow'])->name('guide.show');
 Route::get('/download', [DashboardController::class, 'download'])->name('download');
 Route::get('/images/icons/{id}.png', [AdminController::class, 'getItemIcon'])->name('item.icon');
+Route::get('/images/item_bg/{id}.png', [AdminController::class, 'getItemBgImage'])->name('item_bg.image');
 
 // Guest only (login, register)
 Route::middleware('guest')->group(function () {
@@ -136,6 +137,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Visual Map Editor 2D
     Route::get('/map-editor', [AdminController::class, 'mapEditor'])->name('map_editor');
     Route::get('/map-editor/data', [AdminController::class, 'mapEditorData'])->name('map_editor.data');
+    Route::get('/map-editor/item-bg-templates', [AdminController::class, 'getItemBgTemplatesApi'])->name('map_editor.item_bg_templates');
     Route::post('/map-editor/save', [AdminController::class, 'mapEditorSave'])->name('map_editor.save');
 
     // Server & Build

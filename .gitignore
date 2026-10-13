@@ -16,4 +16,5 @@ yarn-error.log
 /.idea
 /.vscode
 /public/images/icons
+/public/images/item_bg
 run_web.bat

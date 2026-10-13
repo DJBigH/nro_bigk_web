@@ -1735,12 +1735,41 @@ class AdminController extends Controller
                 }
             }
 
+            $decorations = [];
             $decorationsCount = 0;
             $bgDataPath = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/map/item_bg_map_data/{$mapId}";
             if (file_exists($bgDataPath)) {
                 $bgRaw = @file_get_contents($bgDataPath);
                 if ($bgRaw && strlen($bgRaw) >= 2) {
                     $decorationsCount = (ord($bgRaw[0]) << 8) | ord($bgRaw[1]);
+                    $templates = $this->getItemBgTemplates();
+                    for ($i = 0; $i < $decorationsCount; $i++) {
+                        $offset = 2 + $i * 6;
+                        if (strlen($bgRaw) < $offset + 6) break;
+                        $tplId = (ord($bgRaw[$offset]) << 8) | ord($bgRaw[$offset + 1]);
+                        $tx = (ord($bgRaw[$offset + 2]) << 8) | ord($bgRaw[$offset + 3]);
+                        if ($tx >= 0x8000) $tx -= 0x10000;
+                        $ty = (ord($bgRaw[$offset + 4]) << 8) | ord($bgRaw[$offset + 5]);
+                        if ($ty >= 0x8000) $ty -= 0x10000;
+
+                        $tpl = $templates[$tplId] ?? null;
+                        if ($tpl) {
+                            $px = $tx * 24 + $tpl['dx'];
+                            $py = $ty * 24 + $tpl['dy'];
+                            $decorations[] = [
+                                'index' => $i,
+                                'template_id' => $tplId,
+                                'img_id' => $tpl['img_id'],
+                                'layer' => $tpl['layer'],
+                                'tx' => $tx,
+                                'ty' => $ty,
+                                'dx' => $tpl['dx'],
+                                'dy' => $tpl['dy'],
+                                'x' => $px,
+                                'y' => $py
+                            ];
+                        }
+                    }
                 }
             }
 
@@ -1754,7 +1783,8 @@ class AdminController extends Controller
                     'bg_type' => (int)($map->bg_type ?? 0),
                     'tile_id' => (int)($map->tile_id ?? 1),
                     'zones' => (int)($map->zones ?? 10),
-                    'decorations_count' => $decorationsCount,
+                    'decorations_count' => count($decorations),
+                    'decorations' => $decorations,
                     'width' => $mapWidth,
                     'height' => $mapHeight,
                     'tw' => $tw ?? 52,
@@ -1807,10 +1837,87 @@ class AdminController extends Controller
                 'mobs' => json_encode($mobsFormatted),
             ]);
 
-            return response()->json(['success' => true, 'message' => 'Lưu tọa độ thực thể bản đồ vào Database thành công!']);
+            // Save decorations to game binary item_bg_map_data if provided
+            if ($request->has('decorations')) {
+                $decosInput = $request->input('decorations', []);
+                if (is_array($decosInput)) {
+                    $cnt = count($decosInput);
+                    $bytes = pack('n', $cnt);
+                    foreach ($decosInput as $d) {
+                        $tplId = (int)($d['template_id'] ?? 0);
+                        $tx = (int)($d['tx'] ?? round(($d['x'] - ($d['dx'] ?? 0)) / 24));
+                        $ty = (int)($d['ty'] ?? round(($d['y'] - ($d['dy'] ?? 0)) / 24));
+                        $bytes .= pack('n', $tplId & 0xFFFF);
+                        $bytes .= pack('n', $tx & 0xFFFF);
+                        $bytes .= pack('n', $ty & 0xFFFF);
+                    }
+                    $bgDataPath = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/map/item_bg_map_data/{$mapId}";
+                    if (file_exists($bgDataPath) && !file_exists($bgDataPath . '.bak')) {
+                        @copy($bgDataPath, $bgDataPath . '.bak');
+                    }
+                    @file_put_contents($bgDataPath, $bytes);
+                }
+            }
+
+            return response()->json(['success' => true, 'message' => 'Lưu dữ liệu bản đồ & vật trang trí thành công!']);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Lỗi lưu bản đồ: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Cache & Parse Item Background Templates
+     */
+    protected function getItemBgTemplates()
+    {
+        static $cachedTemplates = null;
+        if ($cachedTemplates !== null) {
+            return $cachedTemplates;
+        }
+
+        $cachedTemplates = [];
+        $path = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/item_bg_temp/item_bg_data";
+        if (!file_exists($path)) {
+            return $cachedTemplates;
+        }
+
+        $raw = @file_get_contents($path);
+        if (!$raw || strlen($raw) < 2) {
+            return $cachedTemplates;
+        }
+
+        $count = (ord($raw[0]) << 8) | ord($raw[1]);
+        for ($i = 0; $i < $count; $i++) {
+            $offset = 2 + $i * 8;
+            if (strlen($raw) < $offset + 8) break;
+            $imgId = (ord($raw[$offset]) << 8) | ord($raw[$offset + 1]);
+            if ($imgId >= 0x8000) $imgId -= 0x10000;
+            $layer = ord($raw[$offset + 2]);
+            $dx = (ord($raw[$offset + 3]) << 8) | ord($raw[$offset + 4]);
+            if ($dx >= 0x8000) $dx -= 0x10000;
+            $dy = (ord($raw[$offset + 5]) << 8) | ord($raw[$offset + 6]);
+            if ($dy >= 0x8000) $dy -= 0x10000;
+
+            $cachedTemplates[$i] = [
+                'img_id' => $imgId,
+                'layer' => $layer,
+                'dx' => $dx,
+                'dy' => $dy
+            ];
+        }
+
+        return $cachedTemplates;
+    }
+
+    /**
+     * API to get item bg templates list for picker
+     */
+    public function getItemBgTemplatesApi()
+    {
+        return response()->json([
+            'success' => true,
+            'templates' => $this->getItemBgTemplates()
+        ]);
     }
 
     /**
@@ -1830,6 +1937,28 @@ class AdminController extends Controller
                     'Cache-Control' => 'public, max-age=604800'
                 ]);
             }
+        }
+
+        $fallback = public_path('images/no_image.png');
+        if (file_exists($fallback)) {
+            return response()->file($fallback, ['Content-Type' => 'image/png']);
+        }
+
+        abort(404);
+    }
+
+    /**
+     * Serve Item BG Decoration PNG directly with fallback
+     */
+    public function getItemBgImage($id)
+    {
+        $id = (int) $id;
+        $path = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/item_bg_temp/x1/{$id}.png";
+        if (file_exists($path)) {
+            return response()->file($path, [
+                'Content-Type' => 'image/png',
+                'Cache-Control' => 'public, max-age=604800'
+            ]);
         }
 
         $fallback = public_path('images/no_image.png');

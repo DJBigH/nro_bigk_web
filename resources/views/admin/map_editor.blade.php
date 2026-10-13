@@ -146,7 +146,7 @@
                     <input type="checkbox" id="chkDecorations" checked onchange="renderCanvas()" style="accent-color: #238636;"> Vật trang trí
                 </label>
                 <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
-                    <input type="checkbox" id="chkEditDecorations" style="accent-color: #238636;"> Sửa trang trí
+                    <input type="checkbox" id="chkEditDecorations" onchange="renderCanvas()" style="accent-color: #238636;"> Sửa trang trí
                 </label>
                 <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
                     <input type="checkbox" id="chkGrid" onchange="renderCanvas()" style="accent-color: #238636;"> Lưới ô
@@ -170,7 +170,7 @@
                 <button type="button" class="btn" style="background: #21262d; color: #58a6ff; border: 1px solid #1f6feb; font-size: 0.79rem; padding: 4px 9px; border-radius: 6px;" onclick="openAddWaypointModal()">
                     🚪 Thêm cổng
                 </button>
-                <button type="button" class="btn" style="background: #21262d; color: #7ee787; border: 1px solid #238636; font-size: 0.79rem; padding: 4px 9px; border-radius: 6px;" onclick="addDecorationItem()">
+                <button type="button" class="btn" style="background: #21262d; color: #7ee787; border: 1px solid #238636; font-size: 0.79rem; padding: 4px 9px; border-radius: 6px;" onclick="openAddDecoModal()">
                     🌲 Thêm trang trí
                 </button>
             </div>
@@ -245,10 +245,9 @@
             <div>
                 <div style="font-weight: 600; color: #8b949e; font-size: 0.82rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 4px 0;" onclick="toggleDecorationsGroup()">
                     <span id="rightDecoHeader">▶ Vật trang trí (34)</span>
+                    <button type="button" class="btn" style="background: none; border: none; color: #7ee787; font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); openAddDecoModal()" title="Thêm trang trí">➕</button>
                 </div>
-                <div id="rightDecoList" style="display: none; font-size: 0.75rem; color: #6e7681; padding-left: 8px;">
-                    Dữ liệu được nạp từ item_bg_map_data thật của Game.
-                </div>
+                <div id="rightDecoList" style="display: none; font-size: 0.75rem; color: #6e7681; padding-left: 2px;"></div>
             </div>
         </div>
 
@@ -368,6 +367,38 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Thêm Vật Trang Trí (Cây cối, Nhà cửa, Cột mốc, Cỏ hoa...) -->
+<div id="addDecoModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; width: 680px; max-width: 95vw; padding: 18px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #21262d; padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.1rem;">🌲</span>
+                <h3 style="margin: 0; color: #7ee787; font-size: 1.05rem;">Thêm Vật Trang Trí (Cây Cối, Nhà Cửa, Cột Mốc, Cỏ Hoa...)</h3>
+            </div>
+            <button type="button" onclick="closeAddDecoModal()" style="background: none; border: none; color: #888; font-size: 1.2rem; cursor: pointer;">&times;</button>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+            <input type="text" id="searchDecoInput" oninput="filterDecoTemplates()" placeholder="Tìm theo ID template hoặc tên..." class="form-input" style="flex: 1; font-size: 0.85rem;">
+            <select id="filterDecoLayer" onchange="filterDecoTemplates()" class="form-input" style="width: 150px; font-size: 0.85rem;">
+                <option value="all">Tất cả Layer</option>
+                <option value="1">Layer 1 (Nền xa)</option>
+                <option value="2">Layer 2 (Trung cảnh)</option>
+                <option value="3">Layer 3 (Bề mặt)</option>
+                <option value="4">Layer 4 (Tiền cảnh)</option>
+            </select>
+        </div>
+        <div id="decoTemplatesGrid" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 8px; padding: 4px; min-height: 280px; max-height: 420px;">
+            <div style="text-align: center; color: #8b949e; padding: 40px; grid-column: 1 / -1;">Đang tải danh sách mẫu trang trí...</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid #21262d; padding-top: 10px;">
+            <div style="font-size: 0.78rem; color: #8b949e;">
+                Nhấp chuột vào mẫu để đặt trực tiếp vào giữa màn hình bản đồ.
+            </div>
+            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d;" onclick="closeAddDecoModal()">Đóng</button>
+        </div>
+    </div>
+</div>
 </div><!-- #mapEditorWrapper -->
 
 <script>
@@ -463,6 +494,18 @@ function getTileImage(tileId, tileIndex) {
         tileImageCache[key] = img;
     }
     return tileImageCache[key];
+}
+
+const decoImageCache = {};
+function getDecoImage(imgId) {
+    if (imgId === undefined || imgId === null || imgId < 0) return null;
+    if (!decoImageCache[imgId]) {
+        const img = new Image();
+        img.src = `/images/item_bg/${imgId}.png`;
+        img.onload = () => requestAnimationFrame(renderCanvas);
+        decoImageCache[imgId] = img;
+    }
+    return decoImageCache[imgId];
 }
 
 // =============================================================
@@ -606,15 +649,19 @@ function switchMap(mapId) {
         });
 }
 
+let isDecoGroupOpen = false;
 function updateHeaderInfo() {
     document.getElementById('currentMapTitle').innerText = `Map #${currentMapData.id} - ${currentMapData.name}`;
     const tw = currentMapData.tw || Math.round(canvas.width / 24);
     const th = currentMapData.th || Math.round(canvas.height / 24);
     const zones = currentMapData.zones || 10;
-    const decos = currentMapData.decorations_count || 34;
+    const decos = currentMapData.decorations ? currentMapData.decorations.length : (currentMapData.decorations_count || 0);
     document.getElementById('canvasDimInfo').innerText = 
         `Kích thước ${tw}×${th} ô (${canvas.width}×${canvas.height} px) · tileset ${currentMapData.tile_id} · nền ${currentMapData.bg_id} · ${zones} khu`;
-    document.getElementById('rightDecoHeader').innerText = `▶ Vật trang trí (${decos})`;
+    const decoHeader = document.getElementById('rightDecoHeader');
+    if (decoHeader) {
+        decoHeader.innerText = `${isDecoGroupOpen ? '▼' : '▶'} Vật trang trí (${decos})`;
+    }
 }
 
 function setZoom(scale) {
@@ -728,6 +775,15 @@ function renderCanvas() {
         }
     }
 
+    // 4b. Background Decorations (Layer 1 & 2: Trees, houses, background structures)
+    if (showDecos && currentMapData.decorations) {
+        currentMapData.decorations.forEach((d, idx) => {
+            if (d.layer === 1 || d.layer === 2) {
+                drawDecorationEntity(d, idx);
+            }
+        });
+    }
+
     // 5. Authentic Game Tiles Rendering
     if (currentMapData.tiles && currentMapData.tiles.length > 0) {
         const rows = currentMapData.tiles.length;
@@ -751,6 +807,15 @@ function renderCanvas() {
         // Fallback mesh
         ctx.fillStyle = '#4e342e';
         currentMapData.blocks.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+    }
+
+    // 5b. Surface & Foreground Decorations (Layer 3 & 4: Grass, fences, surface flora, foreground)
+    if (showDecos && currentMapData.decorations) {
+        currentMapData.decorations.forEach((d, idx) => {
+            if (d.layer !== 1 && d.layer !== 2) {
+                drawDecorationEntity(d, idx);
+            }
+        });
     }
 
     // 6. Grid Overlay
@@ -922,6 +987,51 @@ function renderCanvas() {
     }
 }
 
+function drawDecorationEntity(d, idx) {
+    const img = getDecoImage(d.img_id);
+    if (!img) return;
+
+    const dw = (img.complete && img.naturalWidth > 0) ? img.naturalWidth : 40;
+    const dh = (img.complete && img.naturalHeight > 0) ? img.naturalHeight : 40;
+    const dx = d.x;
+    const dy = d.y;
+
+    d._w = dw;
+    d._h = dh;
+
+    if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
+    const isEditMode = document.getElementById('chkEditDecorations') && document.getElementById('chkEditDecorations').checked;
+    const isSel = selectedEntity && selectedEntity.type === 'deco' && selectedEntity.index === idx;
+
+    if (isSel || isEditMode) {
+        ctx.save();
+        ctx.strokeStyle = isSel ? '#00e5ff' : 'rgba(126, 231, 135, 0.45)';
+        ctx.lineWidth = isSel ? 2 : 1;
+        if (!isSel) ctx.setLineDash([3, 3]);
+        ctx.strokeRect(dx, dy, dw, dh);
+
+        if (isSel) {
+            ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
+            ctx.fillRect(dx, dy, dw, dh);
+
+            const label = `#${idx} · Tpl ${d.template_id} (L${d.layer})`;
+            ctx.font = 'bold 10px monospace';
+            const tw = ctx.measureText(label).width;
+            ctx.fillStyle = 'rgba(13, 17, 23, 0.85)';
+            ctx.fillRect(dx, dy - 16, tw + 8, 15);
+            ctx.strokeStyle = '#00e5ff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(dx, dy - 16, tw + 8, 15);
+            ctx.fillStyle = '#00e5ff';
+            ctx.fillText(label, dx + 4, dy - 5);
+        }
+        ctx.restore();
+    }
+}
+
 // =============================================================
 // RIGHT INSPECTOR TABS & ITEMS LIST
 // =============================================================
@@ -1020,17 +1130,72 @@ function renderRightInspector() {
             </div>
         `;
     });
+
+    // Render Decorations
+    const decoList = document.getElementById('rightDecoList');
+    if (decoList) {
+        const decos = currentMapData.decorations || [];
+        if (decos.length === 0) {
+            decoList.innerHTML = `<div style="padding: 6px; color: #8b949e; font-size: 0.75rem;">Không có vật trang trí nào trên bản đồ này.</div>`;
+        } else {
+            let html = `<div style="display: flex; flex-direction: column; gap: 4px; max-height: 250px; overflow-y: auto; padding-right: 4px;">`;
+            decos.forEach((d, idx) => {
+                const isSel = selectedEntity && selectedEntity.type === 'deco' && selectedEntity.index === idx;
+                html += `
+                    <div onclick="selectEntity('deco', ${idx})" style="display: flex; align-items: center; justify-content: space-between; padding: 3px 6px; border-radius: 4px; cursor: pointer; background: ${isSel ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isSel ? '#00e5ff' : 'transparent'};">
+                        <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
+                            <img src="/images/item_bg/${d.img_id}.png" onerror="this.src='/images/no_image.png'" style="width: 22px; height: 22px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 2px;">
+                            <span style="font-size: 0.75rem; color: #7ee787; font-weight: 600;">#${idx} Tpl ${d.template_id}</span>
+                            <span style="font-size: 0.7rem; color: #8b949e;">(L${d.layer})</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.72rem; font-family: monospace; color: #8b949e;">${d.x}, ${d.y}</span>
+                            <button type="button" onclick="event.stopPropagation(); removeDecoration(${idx})" title="Xóa" style="background: none; border: none; color: #da3633; cursor: pointer; font-size: 0.8rem; padding: 0 4px;">&times;</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            decoList.innerHTML = html;
+        }
+    }
 }
 
 function selectEntity(type, index) {
     selectedEntity = { type, index };
+    if (type === 'deco' && currentMapData.decorations && currentMapData.decorations[index]) {
+        const d = currentMapData.decorations[index];
+        const vp = document.getElementById('canvasViewport');
+        if (vp) {
+            vp.scrollLeft = Math.max(0, d.x * currentZoom - vp.clientWidth / 2);
+            vp.scrollTop = Math.max(0, d.y * currentZoom - vp.clientHeight / 2);
+        }
+    }
     renderCanvas();
     renderRightInspector();
 }
 
 function toggleDecorationsGroup() {
+    isDecoGroupOpen = !isDecoGroupOpen;
     const el = document.getElementById('rightDecoList');
-    el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+    if (el) el.style.display = isDecoGroupOpen ? 'block' : 'none';
+    const header = document.getElementById('rightDecoHeader');
+    const cnt = (currentMapData && currentMapData.decorations) ? currentMapData.decorations.length : (currentMapData ? currentMapData.decorations_count : 0);
+    if (header) {
+        header.innerText = `${isDecoGroupOpen ? '▼' : '▶'} Vật trang trí (${cnt})`;
+    }
+}
+
+function removeDecoration(idx) {
+    if (!currentMapData.decorations) return;
+    currentMapData.decorations.splice(idx, 1);
+    currentMapData.decorations_count = currentMapData.decorations.length;
+    if (selectedEntity && selectedEntity.type === 'deco' && selectedEntity.index === idx) {
+        selectedEntity = null;
+    }
+    updateHeaderInfo();
+    renderCanvas();
+    renderRightInspector();
 }
 
 function updateBgConfig() {
@@ -1128,6 +1293,26 @@ canvas.addEventListener('mousedown', function(e) {
         }
     }
 
+    // 4. Check Decoration Hit
+    const isEditDeco = document.getElementById('chkEditDecorations') && document.getElementById('chkEditDecorations').checked;
+    if (currentMapData.decorations && (isEditDeco || (selectedEntity && selectedEntity.type === 'deco'))) {
+        for (let i = currentMapData.decorations.length - 1; i >= 0; i--) {
+            const d = currentMapData.decorations[i];
+            const w = d._w || 40;
+            const h = d._h || 40;
+            if (mouseX >= d.x && mouseX <= d.x + w && mouseY >= d.y && mouseY <= d.y + h) {
+                selectedEntity = { type: 'deco', index: i };
+                draggingEntity = i;
+                dragType = 'deco';
+                dragOffsetX = d.x - mouseX;
+                dragOffsetY = d.y - mouseY;
+                renderCanvas();
+                renderRightInspector();
+                return;
+            }
+        }
+    }
+
     selectedEntity = null;
     renderCanvas();
     renderRightInspector();
@@ -1160,6 +1345,12 @@ canvas.addEventListener('mousemove', function(e) {
             w.minY = mouseY + dragOffsetY;
             w.maxX = w.minX + bw;
             w.maxY = w.minY + bh;
+        } else if (dragType === 'deco') {
+            const d = currentMapData.decorations[draggingEntity];
+            d.x = mouseX + dragOffsetX;
+            d.y = mouseY + dragOffsetY;
+            d.tx = Math.round((d.x - (d.dx || 0)) / 24);
+            d.ty = Math.round((d.y - (d.dy || 0)) / 24);
         }
         renderCanvas();
         renderRightInspector();
@@ -1195,6 +1386,12 @@ window.addEventListener('keydown', function(e) {
             const w = currentMapData.waypoints[selectedEntity.index];
             w.minX += dx; w.maxX += dx;
             w.minY += dy; w.maxY += dy;
+        } else if (selectedEntity.type === 'deco') {
+            const d = currentMapData.decorations[selectedEntity.index];
+            d.x += dx;
+            d.y += dy;
+            d.tx = Math.round((d.x - (d.dx || 0)) / 24);
+            d.ty = Math.round((d.y - (d.dy || 0)) / 24);
         }
         renderCanvas();
         renderRightInspector();
@@ -1203,6 +1400,7 @@ window.addEventListener('keydown', function(e) {
         if (selectedEntity.type === 'npc') removeNpc(selectedEntity.index);
         else if (selectedEntity.type === 'mob') removeMob(selectedEntity.index);
         else if (selectedEntity.type === 'wp') removeWaypoint(selectedEntity.index);
+        else if (selectedEntity.type === 'deco') removeDecoration(selectedEntity.index);
     }
 });
 
@@ -1311,8 +1509,127 @@ function removeWaypoint(idx) {
     renderRightInspector();
 }
 
+let allDecoTemplates = [];
+let isDecoTemplatesLoading = false;
+
+function loadDecoTemplates() {
+    if (allDecoTemplates && Object.keys(allDecoTemplates).length > 0) return Promise.resolve(allDecoTemplates);
+    if (isDecoTemplatesLoading) return Promise.resolve({});
+    isDecoTemplatesLoading = true;
+    return fetch("{{ route('admin.map_editor.item_bg_templates') }}")
+        .then(r => r.json())
+        .then(res => {
+            isDecoTemplatesLoading = false;
+            if (res.success && res.templates) {
+                allDecoTemplates = res.templates;
+            }
+            return allDecoTemplates;
+        })
+        .catch(() => {
+            isDecoTemplatesLoading = false;
+            return {};
+        });
+}
+
+function openAddDecoModal() {
+    document.getElementById('addDecoModal').style.display = 'flex';
+    document.getElementById('searchDecoInput').value = '';
+    const grid = document.getElementById('decoTemplatesGrid');
+    if (grid) grid.innerHTML = `<div style="text-align: center; color: #8b949e; padding: 40px; grid-column: 1 / -1;">Đang tải danh sách mẫu trang trí...</div>`;
+    loadDecoTemplates().then(() => renderDecoTemplatesList());
+}
+
+function closeAddDecoModal() {
+    document.getElementById('addDecoModal').style.display = 'none';
+}
+
+function filterDecoTemplates() {
+    renderDecoTemplatesList();
+}
+
+function renderDecoTemplatesList() {
+    const grid = document.getElementById('decoTemplatesGrid');
+    if (!grid) return;
+    const q = (document.getElementById('searchDecoInput').value || '').toLowerCase().trim();
+    const layerFilter = document.getElementById('filterDecoLayer').value;
+
+    let entries = Object.entries(allDecoTemplates);
+    if (layerFilter !== 'all') {
+        const lf = parseInt(layerFilter);
+        entries = entries.filter(([id, t]) => t.layer === lf);
+    }
+    if (q) {
+        entries = entries.filter(([id, t]) => id.includes(q) || String(t.img_id).includes(q));
+    }
+
+    if (entries.length === 0) {
+        grid.innerHTML = `<div style="text-align: center; color: #8b949e; padding: 40px; grid-column: 1 / -1;">Không tìm thấy mẫu trang trí phù hợp.</div>`;
+        return;
+    }
+
+    const showEntries = entries.slice(0, 120);
+    let html = '';
+    showEntries.forEach(([id, t]) => {
+        html += `
+            <div onclick="selectDecoToAdd(${id})" style="background: rgba(255,255,255,0.03); border: 1px solid #30363d; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='#7ee787'; this.style.background='rgba(35,134,54,0.15)';" onmouseout="this.style.borderColor='#30363d'; this.style.background='rgba(255,255,255,0.03)';">
+                <div style="height: 60px; width: 100%; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden;">
+                    <img src="/images/item_bg/${t.img_id}.png" onerror="this.src='/images/no_image.png'" style="max-height: 56px; max-width: 90%; object-fit: contain;">
+                </div>
+                <div style="text-align: center; width: 100%;">
+                    <div style="font-size: 0.78rem; font-weight: 700; color: #7ee787;">Mẫu #${id}</div>
+                    <div style="font-size: 0.68rem; color: #8b949e;">Ảnh #${t.img_id} · L${t.layer}</div>
+                </div>
+            </div>
+        `;
+    });
+    if (entries.length > 120) {
+        html += `<div style="text-align: center; color: #8b949e; padding: 10px; grid-column: 1 / -1; font-size: 0.75rem;">(Hiển thị 120/${entries.length} mẫu · Nhập ID để tìm chính xác)</div>`;
+    }
+    grid.innerHTML = html;
+}
+
+function selectDecoToAdd(tplId) {
+    if (!currentMapData) return;
+    if (!currentMapData.decorations) currentMapData.decorations = [];
+
+    const tpl = allDecoTemplates[tplId] || { img_id: 0, layer: 1, dx: 0, dy: 0 };
+    const vp = document.getElementById('canvasViewport');
+    const scrollLeft = vp ? vp.scrollLeft : 0;
+    const scrollTop = vp ? vp.scrollTop : 0;
+    const centerX = Math.round((scrollLeft + (vp ? vp.clientWidth : 600) / 2) / currentZoom);
+    const centerY = snapToGround(centerX, Math.round((scrollTop + (vp ? vp.clientHeight : 400) / 2) / currentZoom));
+
+    const tx = Math.round((centerX - (tpl.dx || 0)) / 24);
+    const ty = Math.round((centerY - (tpl.dy || 0)) / 24);
+    const px = tx * 24 + (tpl.dx || 0);
+    const py = ty * 24 + (tpl.dy || 0);
+
+    const newDeco = {
+        index: currentMapData.decorations.length,
+        template_id: parseInt(tplId),
+        img_id: tpl.img_id,
+        layer: tpl.layer,
+        tx: tx,
+        ty: ty,
+        dx: tpl.dx,
+        dy: tpl.dy,
+        x: px,
+        y: py
+    };
+
+    currentMapData.decorations.push(newDeco);
+    currentMapData.decorations_count = currentMapData.decorations.length;
+    selectedEntity = { type: 'deco', index: currentMapData.decorations.length - 1 };
+
+    closeAddDecoModal();
+    updateHeaderInfo();
+    renderCanvas();
+    renderRightInspector();
+    if (window.showToast) window.showToast(`Đã thêm vật trang trí #${newDeco.index} (Tpl ${tplId})!`, 'success');
+}
+
 function addDecorationItem() {
-    if (window.showToast) window.showToast('Vật trang trí được quản lý và bảo toàn theo data game item_bg_map_data', 'info');
+    openAddDecoModal();
 }
 
 // =============================================================
@@ -1328,7 +1645,8 @@ function saveMapData(callback) {
         body: JSON.stringify({
             map_id: currentMapData.id,
             npcs: currentMapData.npcs,
-            mobs: currentMapData.mobs
+            mobs: currentMapData.mobs,
+            decorations: currentMapData.decorations
         })
     })
     .then(r => r.json())
