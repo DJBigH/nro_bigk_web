@@ -1899,6 +1899,13 @@ class AdminController extends Controller
         ]);
     }
 
+    private function launchGameServerDaemon()
+    {
+        $psCode = "Start-Process -FilePath 'C:\\Program Files\\Java\\jdk-17\\bin\\java.exe' -ArgumentList @('-server', '-cp', 'dist/soicon.jar;lib/*', 'com.girlkun.server.ServerManager') -WorkingDirectory 'd:\\nro\\srcnrobigk03032026\\nrobigkv7\\soicon' -WindowStyle Hidden";
+        $encoded = base64_encode(mb_convert_encoding($psCode, 'UTF-16LE', 'UTF-8'));
+        shell_exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand {$encoded} 2>&1");
+    }
+
     public function serverBuildAction(Request $request)
     {
         $action = $request->input('action');
@@ -1916,23 +1923,21 @@ class AdminController extends Controller
                     ]);
                 }
 
-                $cmd = 'Start-Process -FilePath "C:\Program Files\Java\jdk-17\bin\java.exe" -ArgumentList "-server -cp dist/soicon.jar;lib/* com.girlkun.server.ServerManager" -WorkingDirectory "d:\nro\srcnrobigk03032026\nrobigkv7\soicon" -WindowStyle Hidden';
-                shell_exec("powershell -Command \"$cmd\"");
-                $output = "[INFO] Đã gửi lệnh Start-Process khởi chạy Game Server.\n[SOCKET] Chờ port 14445 & HTTP API 14446 lắng nghe...";
+                $this->launchGameServerDaemon();
+                $output = "[INFO] Đã gửi lệnh khởi chạy Game Server dưới nền.\n[SOCKET] Chờ port 14445 & HTTP API 14446 lắng nghe...";
                 break;
 
             case 'stop':
                 $this->callGameApi('/api/server/maintenance', ['seconds' => 3]);
-                shell_exec('powershell -Command "Get-Process -Name java -ErrorAction SilentlyContinue | Stop-Process -Force"');
+                shell_exec('powershell.exe -NoProfile -Command "Get-Process -Name java -ErrorAction SilentlyContinue | Stop-Process -Force"');
                 $output = "[STOP] Đã lưu dữ liệu player và dừng tiến trình Game Server.";
                 break;
 
             case 'restart':
                 $this->callGameApi('/api/server/maintenance', ['seconds' => 2]);
-                shell_exec('powershell -Command "Get-Process -Name java -ErrorAction SilentlyContinue | Stop-Process -Force"');
+                shell_exec('powershell.exe -NoProfile -Command "Get-Process -Name java -ErrorAction SilentlyContinue | Stop-Process -Force"');
                 sleep(1);
-                $cmd = 'Start-Process -FilePath "C:\Program Files\Java\jdk-17\bin\java.exe" -ArgumentList "-server -cp dist/soicon.jar;lib/* com.girlkun.server.ServerManager" -WorkingDirectory "d:\nro\srcnrobigk03032026\nrobigkv7\soicon" -WindowStyle Hidden';
-                shell_exec("powershell -Command \"$cmd\"");
+                $this->launchGameServerDaemon();
                 $output = "[RESTART] Đã khởi động lại máy chủ Game Server (Port 14445).";
                 break;
 

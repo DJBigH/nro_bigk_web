@@ -132,19 +132,57 @@
 </div>
 
 <script>
+const JOB_LOG_STORAGE_KEY = 'nro_server_build_job_output';
+const JOB_LOG_MAX_AGE_MS = 15 * 60 * 1000; // 15 phút (900.000 ms)
+
+function saveJobOutputToStorage(text) {
+    try {
+        localStorage.setItem(JOB_LOG_STORAGE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            content: text
+        }));
+    } catch (e) {}
+}
+
+function loadJobOutputFromStorage() {
+    try {
+        const raw = localStorage.getItem(JOB_LOG_STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        const age = Date.now() - (data.timestamp || 0);
+        if (age < JOB_LOG_MAX_AGE_MS && data.content && data.content.trim() !== 'Chưa chạy job.') {
+            const box = document.getElementById('jobOutputConsole');
+            if (box) {
+                box.innerText = data.content;
+                box.scrollTop = box.scrollHeight;
+            }
+        } else {
+            localStorage.removeItem(JOB_LOG_STORAGE_KEY);
+        }
+    } catch (e) {}
+}
+
 function appendJobLog(text) {
     const box = document.getElementById('jobOutputConsole');
+    if (!box) return;
     if (box.innerText.trim() === 'Chưa chạy job.') {
         box.innerText = '';
     }
     const timestamp = new Date().toLocaleTimeString();
     box.innerText += `[${timestamp}] ${text}\n`;
     box.scrollTop = box.scrollHeight;
+    saveJobOutputToStorage(box.innerText);
 }
 
 function clearJobOutput() {
-    document.getElementById('jobOutputConsole').innerText = 'Chưa chạy job.';
+    const box = document.getElementById('jobOutputConsole');
+    if (box) box.innerText = 'Chưa chạy job.';
+    localStorage.removeItem(JOB_LOG_STORAGE_KEY);
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadJobOutputFromStorage();
+});
 
 function runServiceAction(action) {
     appendJobLog(`Đang gửi lệnh '${action}' tới hệ thống...`);
