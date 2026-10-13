@@ -136,16 +136,72 @@
 
 </div>
 
-<!-- Realtime Online Players Table -->
+<style>
+.page-nav-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #ccc;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+.page-nav-btn:hover:not(:disabled) {
+    background: rgba(255, 122, 0, 0.2);
+    border-color: #ff7a00;
+    color: #fff;
+}
+.page-nav-btn.active {
+    background: linear-gradient(135deg, #ff7a00 0%, #ff4500 100%);
+    border-color: #ff7a00;
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(255, 122, 0, 0.4);
+}
+.page-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+</style>
+
+<!-- Realtime Online Players Table with Pagination -->
 <div class="card" style="padding: 0; margin-bottom: 25px;">
-    <div style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <h3 style="color: #fff; font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">
-            🎮 DANH SÁCH NGƯỜI CHƠI ĐANG ONLINE TRONG RAM
-        </h3>
-        <span id="playersHeaderCount" style="color: #00e676; font-size: 0.9rem; font-weight: 700;">{{ $stats['online_count'] }} Người chơi</span>
+    <div style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h3 style="color: #fff; font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                🎮 DANH SÁCH NGƯỜI CHƠI ĐANG ONLINE TRONG RAM
+            </h3>
+            <span id="playersHeaderCount" class="badge" style="background: rgba(0,230,118,0.15); color: #00e676; border: 1px solid rgba(0,230,118,0.3); font-size: 0.82rem; font-weight: 700; padding: 4px 10px;">{{ $stats['online_count'] }} Người chơi</span>
+        </div>
+
+        <!-- Thanh Tìm Kiếm & Số Lượng / Trang -->
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative;">
+                <input type="text" id="playerSearchInput" placeholder="🔍 Tìm ID, Tên, Map..." class="form-input" style="padding: 6px 12px; font-size: 0.85rem; width: 190px; border-radius: 6px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); color: #fff;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 0.82rem; color: var(--text-muted); white-space: nowrap;">Hiển thị:</span>
+                <select id="playerPerPageSelect" class="form-input" style="padding: 5px 10px; font-size: 0.85rem; width: auto; border-radius: 6px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); color: #fff;">
+                    <option value="5">5 / trang</option>
+                    <option value="10" selected>10 / trang</option>
+                    <option value="15">15 / trang</option>
+                    <option value="25">25 / trang</option>
+                    <option value="50">50 / trang</option>
+                </select>
+            </div>
+        </div>
     </div>
 
-    <div id="noPlayersMsg" style="display: {{ empty($serverStats['players']) ? 'block' : 'none' }}; padding: 25px; text-align: center; color: var(--text-muted);">
+    <div id="noPlayersMsg" style="display: {{ empty($serverStats['players']) ? 'block' : 'none' }}; padding: 30px; text-align: center; color: var(--text-muted);">
         Hiện không có người chơi nào đang kết nối hoặc Game Server đang tắt.
     </div>
 
@@ -163,25 +219,163 @@
                 </tr>
             </thead>
             <tbody id="playersTableBody">
-                @if(!empty($serverStats['players']))
-                    @foreach($serverStats['players'] as $p)
-                        <tr>
-                            <td style="font-family: 'Orbitron', sans-serif;">{{ $p['id'] }}</td>
-                            <td style="font-weight: 700; color: #00e676;">{{ $p['name'] }}</td>
-                            <td style="color: #fff;">{{ $p['username'] }}</td>
-                            <td style="font-family: 'Orbitron', sans-serif; color: #ffb74d;">{{ number_format($p['power']) }}</td>
-                            <td style="font-family: 'Orbitron', sans-serif; color: #ff5252;">{{ number_format($p['hpMax']) }}</td>
-                            <td style="color: #e91e63; font-weight: 700;">{{ number_format($p['ruby']) }} 💎</td>
-                            <td>Map {{ $p['mapId'] }} - Khu {{ $p['zoneId'] }}</td>
-                        </tr>
-                    @endforeach
-                @endif
+                <!-- Nội dung được render tự động qua JS Pagination để đảm bảo mượt mà -->
             </tbody>
         </table>
+    </div>
+
+    <!-- Thanh Điều Hướng Phân Trang -->
+    <div id="playersPaginationWrapper" style="padding: 12px 20px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: rgba(0,0,0,0.15);">
+        <div id="playersPaginationInfo" style="font-size: 0.85rem; color: var(--text-muted);">
+            Đang tải dữ liệu...
+        </div>
+        <div id="playersPaginationNav" style="display: flex; align-items: center; gap: 5px;">
+            <!-- Render các nút trang tự động -->
+        </div>
     </div>
 </div>
 
 <script>
+// -------------------------------------------------------------
+// CLIENT-SIDE REALTIME PAGINATION & SEARCH LOGIC
+// -------------------------------------------------------------
+let allOnlinePlayers = @json($serverStats['players'] ?? []);
+let currentOnlinePage = 1;
+let onlinePerPage = 10;
+let onlineSearchQuery = '';
+
+function renderOnlinePlayersTable() {
+    const noMsg = document.getElementById('noPlayersMsg');
+    const tblCont = document.getElementById('playersTableContainer');
+    const tbody = document.getElementById('playersTableBody');
+    const pagWrapper = document.getElementById('playersPaginationWrapper');
+    const pagInfo = document.getElementById('playersPaginationInfo');
+    const pagNav = document.getElementById('playersPaginationNav');
+
+    if (!allOnlinePlayers || allOnlinePlayers.length === 0) {
+        if (noMsg) noMsg.style.display = 'block';
+        if (tblCont) tblCont.style.display = 'none';
+        if (pagWrapper) pagWrapper.style.display = 'none';
+        if (tbody) tbody.innerHTML = '';
+        return;
+    }
+
+    if (noMsg) noMsg.style.display = 'none';
+    if (tblCont) tblCont.style.display = 'block';
+    if (pagWrapper) pagWrapper.style.display = 'flex';
+
+    // 1. Lọc theo search query (nếu có)
+    let filtered = allOnlinePlayers;
+    if (onlineSearchQuery.trim() !== '') {
+        const q = onlineSearchQuery.trim().toLowerCase();
+        filtered = allOnlinePlayers.filter(p => {
+            const idStr = String(p.id || '').toLowerCase();
+            const nameStr = String(p.name || '').toLowerCase();
+            const userStr = String(p.username || '').toLowerCase();
+            const mapStr = `map ${p.mapId || ''}`.toLowerCase();
+            return idStr.includes(q) || nameStr.includes(q) || userStr.includes(q) || mapStr.includes(q);
+        });
+    }
+
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / onlinePerPage));
+
+    if (currentOnlinePage > totalPages) {
+        currentOnlinePage = totalPages;
+    }
+    if (currentOnlinePage < 1) {
+        currentOnlinePage = 1;
+    }
+
+    if (totalItems === 0) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 25px; color: var(--text-muted);">Không tìm thấy người chơi nào khớp với từ khóa "${onlineSearchQuery}".</td></tr>`;
+        if (pagInfo) pagInfo.innerHTML = `Tìm thấy <b>0</b> người chơi`;
+        if (pagNav) pagNav.innerHTML = '';
+        return;
+    }
+
+    // 2. Cắt lát dữ liệu theo trang hiện tại
+    const startIndex = (currentOnlinePage - 1) * onlinePerPage;
+    const endIndex = Math.min(startIndex + onlinePerPage, totalItems);
+    const pageItems = filtered.slice(startIndex, endIndex);
+
+    let html = '';
+    pageItems.forEach(p => {
+        html += `
+            <tr>
+                <td style="font-family: 'Orbitron', sans-serif;">${p.id}</td>
+                <td style="font-weight: 700; color: #00e676;">${p.name}</td>
+                <td style="color: #fff;">${p.username}</td>
+                <td style="font-family: 'Orbitron', sans-serif; color: #ffb74d;">${Number(p.power || 0).toLocaleString()}</td>
+                <td style="font-family: 'Orbitron', sans-serif; color: #ff5252;">${Number(p.hpMax || 0).toLocaleString()}</td>
+                <td style="color: #e91e63; font-weight: 700;">${Number(p.ruby || 0).toLocaleString()} 💎</td>
+                <td>Map ${p.mapId} - Khu ${p.zoneId}</td>
+            </tr>
+        `;
+    });
+    if (tbody) tbody.innerHTML = html;
+
+    // 3. Cập nhật thông tin phân trang
+    if (pagInfo) {
+        pagInfo.innerHTML = `Hiển thị <b>${startIndex + 1} - ${endIndex}</b> trên tổng <b>${totalItems}</b> người chơi (Trang <b>${currentOnlinePage}/${totalPages}</b>)`;
+    }
+
+    // 4. Render các nút chuyển trang
+    if (pagNav) {
+        let navHtml = '';
+
+        // Nút Đầu & Trước
+        navHtml += `<button type="button" class="page-nav-btn" ${currentOnlinePage === 1 ? 'disabled' : ''} onclick="changeOnlinePage(1)" title="Trang đầu">«</button>`;
+        navHtml += `<button type="button" class="page-nav-btn" ${currentOnlinePage === 1 ? 'disabled' : ''} onclick="changeOnlinePage(${currentOnlinePage - 1})" title="Trang trước">‹</button>`;
+
+        // Hiển thị tối đa 5 nút số trang
+        let startPage = Math.max(1, currentOnlinePage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            navHtml += `<button type="button" class="page-nav-btn ${i === currentOnlinePage ? 'active' : ''}" onclick="changeOnlinePage(${i})">${i}</button>`;
+        }
+
+        // Nút Sau & Cuối
+        navHtml += `<button type="button" class="page-nav-btn ${currentOnlinePage === totalPages ? 'disabled' : ''} onclick="changeOnlinePage(${currentOnlinePage + 1})" title="Trang sau">›</button>`;
+        navHtml += `<button type="button" class="page-nav-btn ${currentOnlinePage === totalPages ? 'disabled' : ''} onclick="changeOnlinePage(${totalPages})" title="Trang cuối">»</button>`;
+
+        pagNav.innerHTML = navHtml;
+    }
+}
+
+function changeOnlinePage(page) {
+    currentOnlinePage = page;
+    renderOnlinePlayersTable();
+}
+
+// Lắng nghe sự kiện tìm kiếm & đổi số dòng hiển thị
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('playerSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            onlineSearchQuery = e.target.value;
+            currentOnlinePage = 1;
+            renderOnlinePlayersTable();
+        });
+    }
+
+    const perPageSelect = document.getElementById('playerPerPageSelect');
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', function(e) {
+            onlinePerPage = parseInt(e.target.value, 10) || 10;
+            currentOnlinePage = 1;
+            renderOnlinePlayersTable();
+        });
+    }
+
+    // Render khởi tạo ban đầu
+    renderOnlinePlayersTable();
+});
+
 // -------------------------------------------------------------
 // REALTIME POLLING: Cập nhật tổng quan và RAM người chơi không cần F5
 // -------------------------------------------------------------
@@ -235,40 +429,12 @@ function pollDashboardData() {
             const codesEl = document.getElementById('giftCodesVal');
             if (codesEl) codesEl.innerText = Number(s.total_giftcodes || 0).toLocaleString();
 
-            // 3. Cập nhật Danh sách người chơi online
+            // 3. Cập nhật Danh sách người chơi online (giữ nguyên phân trang)
             const headerCount = document.getElementById('playersHeaderCount');
             if (headerCount) headerCount.innerText = `${s.online_count || 0} Người chơi`;
 
-            const players = res.players || [];
-            const noMsg = document.getElementById('noPlayersMsg');
-            const tblCont = document.getElementById('playersTableContainer');
-            const tbody = document.getElementById('playersTableBody');
-
-            if (players.length === 0) {
-                if (noMsg) noMsg.style.display = 'block';
-                if (tblCont) tblCont.style.display = 'none';
-                if (tbody) tbody.innerHTML = '';
-            } else {
-                if (noMsg) noMsg.style.display = 'none';
-                if (tblCont) tblCont.style.display = 'block';
-                if (tbody) {
-                    let html = '';
-                    players.forEach(p => {
-                        html += `
-                            <tr>
-                                <td style="font-family: 'Orbitron', sans-serif;">${p.id}</td>
-                                <td style="font-weight: 700; color: #00e676;">${p.name}</td>
-                                <td style="color: #fff;">${p.username}</td>
-                                <td style="font-family: 'Orbitron', sans-serif; color: #ffb74d;">${Number(p.power || 0).toLocaleString()}</td>
-                                <td style="font-family: 'Orbitron', sans-serif; color: #ff5252;">${Number(p.hpMax || 0).toLocaleString()}</td>
-                                <td style="color: #e91e63; font-weight: 700;">${Number(p.ruby || 0).toLocaleString()} 💎</td>
-                                <td>Map ${p.mapId} - Khu ${p.zoneId}</td>
-                            </tr>
-                        `;
-                    });
-                    tbody.innerHTML = html;
-                }
-            }
+            allOnlinePlayers = res.players || [];
+            renderOnlinePlayersTable();
         })
         .catch(() => {});
 }
