@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $isSystemActive = Route::is('admin.dashboard') || Route::is('admin.players*') || Route::is('admin.downloads*') || Route::is('admin.posts*');
+    $isSystemActive = Route::is('admin.dashboard') || Route::is('admin.server_build*') || Route::is('admin.players*') || Route::is('admin.downloads*') || Route::is('admin.posts*');
     $isGameActive = Route::is('admin.bosses*') || Route::is('admin.bots*') || Route::is('admin.map_editor*') || Route::is('admin.drops*') || Route::is('admin.achievements*') || Route::is('admin.combine-rate*');
     $isEconomyActive = Route::is('admin.items.lookup*') || Route::is('admin.shop*') || Route::is('admin.web_chest*') || Route::is('admin.giftcodes*') || Route::is('admin.acc_sales*');
     $isEventActive = Route::is('admin.spin*');
@@ -44,6 +44,11 @@
                     <li style="margin-top: 4px;">
                         <a href="{{ route('admin.dashboard') }}" class="admin-menu-link {{ Route::is('admin.dashboard') ? 'active' : '' }}">
                             📊 THỐNG KÊ
+                        </a>
+                    </li>
+                    <li style="margin-top: 4px;">
+                        <a href="{{ route('admin.server_build') }}" class="admin-menu-link {{ Route::is('admin.server_build*') ? 'active' : '' }}">
+                            🖥️ SERVER & BUILD
                         </a>
                     </li>
                     <li style="margin-top: 4px;">

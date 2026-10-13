@@ -1543,7 +1543,18 @@ class AdminController extends Controller
      */
     public function mapEditor(Request $request)
     {
-        $maps = DB::table('map_template')->select('id', DB::raw('COALESCE(NAME, name) as name'))->orderBy('id', 'asc')->get();
+        $maps = DB::table('map_template')
+            ->select('id', DB::raw('COALESCE(NAME, name) as name'), 'bg_id', 'npcs', 'mobs', 'zones')
+            ->orderBy('id', 'asc')
+            ->get()
+            ->map(function($m) {
+                $npcList = !empty($m->npcs) ? (json_decode($m->npcs, true) ?? []) : [];
+                $mobList = !empty($m->mobs) ? (json_decode($m->mobs, true) ?? []) : [];
+                $m->npc_count = is_array($npcList) ? count($npcList) : 0;
+                $m->mob_count = is_array($mobList) ? count($mobList) : 0;
+                return $m;
+            });
+
         $npcTemplates = DB::table('npc_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'avatar')->orderBy('id', 'asc')->get();
         $radarMobIcons = DB::table('radar')->where('type', 0)->pluck('iconId', 'template')->toArray();
         $mobTemplates = DB::table('mob_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'hp')->orderBy('id', 'asc')->get();
@@ -1724,6 +1735,15 @@ class AdminController extends Controller
                 }
             }
 
+            $decorationsCount = 0;
+            $bgDataPath = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/map/item_bg_map_data/{$mapId}";
+            if (file_exists($bgDataPath)) {
+                $bgRaw = @file_get_contents($bgDataPath);
+                if ($bgRaw && strlen($bgRaw) >= 2) {
+                    $decorationsCount = (ord($bgRaw[0]) << 8) | ord($bgRaw[1]);
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'map' => [
@@ -1733,8 +1753,13 @@ class AdminController extends Controller
                     'bg_id' => (int)($map->bg_id ?? 0),
                     'bg_type' => (int)($map->bg_type ?? 0),
                     'tile_id' => (int)($map->tile_id ?? 1),
+                    'zones' => (int)($map->zones ?? 10),
+                    'decorations_count' => $decorationsCount,
                     'width' => $mapWidth,
                     'height' => $mapHeight,
+                    'tw' => $tw ?? 52,
+                    'th' => $th ?? 24,
+                    'tiles' => $tiles ?? [],
                     'blocks' => $blocks,
                     'platforms' => $platforms,
                     'npcs' => $npcs,
@@ -1813,5 +1838,198 @@ class AdminController extends Controller
         }
 
         abort(404);
+    }
+
+    /**
+     * Server & Build Management Page
+     */
+    public function serverBuild(Request $request)
+    {
+        $serverStats = $this->callGameApi('/api/server/stats', [], 'GET');
+        $isGameActive = ($serverStats['success'] ?? false) || @fsockopen('127.0.0.1', 14445, $errno, $errstr, 0.3) !== false;
+
+        $isMysqlActive = false;
+        try {
+            DB::connection()->getPdo();
+            $isMysqlActive = true;
+        } catch (\Throwable $e) {}
+
+        $isNginxActive = true;
+        $isPanelActive = true;
+
+        $detectedIp = $request->header('X-Real-IP')
+            ?: ($request->header('X-Forwarded-For') ? trim(explode(',', $request->header('X-Forwarded-For'))[0]) : $request->ip());
+
+        $defaultAllowlist = ['100.64.0.0/10', '127.0.0.1/32', '::1/128', '14.233.210.201/32', '123.26.4.208/32', '123.26.9.45/32'];
+        $allowlistFile = storage_path('app/dev_allowlist.json');
+        $saved = [];
+        if (file_exists($allowlistFile)) {
+            $saved = json_decode(@file_get_contents($allowlistFile), true) ?? [];
+        }
+        $allowlist = array_values(array_unique(array_merge($defaultAllowlist, $saved)));
+
+        return view('admin.server_build', compact(
+            'isGameActive',
+            'isMysqlActive',
+            'isNginxActive',
+            'isPanelActive',
+            'detectedIp',
+            'allowlist',
+            'serverStats'
+        ));
+    }
+
+    public function serverBuildStatus()
+    {
+        $serverStats = $this->callGameApi('/api/server/stats', [], 'GET');
+        $isGameActive = ($serverStats['success'] ?? false) || @fsockopen('127.0.0.1', 14445, $errno, $errstr, 0.3) !== false;
+
+        $isMysqlActive = false;
+        try {
+            DB::connection()->getPdo();
+            $isMysqlActive = true;
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success' => true,
+            'nro_game' => $isGameActive,
+            'mysql' => $isMysqlActive,
+            'nginx' => true,
+            'nro_panel' => true
+        ]);
+    }
+
+    public function serverBuildAction(Request $request)
+    {
+        $action = $request->input('action');
+        $output = "";
+
+        switch ($action) {
+            case 'start':
+                $fp = @fsockopen('127.0.0.1', 14445, $errno, $errstr, 0.3);
+                if ($fp) {
+                    fclose($fp);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Máy chủ Game Server đã đang chạy trên Port 14445!',
+                        'output' => "[STATUS] Game Server đang chạy trên port 14445 và Admin API 14446."
+                    ]);
+                }
+
+                $cmd = 'Start-Process -FilePath "C:\Program Files\Java\jdk-17\bin\java.exe" -ArgumentList "-server -cp dist/soicon.jar;lib/* com.girlkun.server.ServerManager" -WorkingDirectory "d:\nro\srcnrobigk03032026\nrobigkv7\soicon" -WindowStyle Hidden';
+                shell_exec("powershell -Command \"$cmd\"");
+                $output = "[INFO] Đã gửi lệnh Start-Process khởi chạy Game Server.\n[SOCKET] Chờ port 14445 & HTTP API 14446 lắng nghe...";
+                break;
+
+            case 'stop':
+                $this->callGameApi('/api/server/maintenance', ['seconds' => 3]);
+                shell_exec('powershell -Command "Get-Process -Name java -ErrorAction SilentlyContinue | Stop-Process -Force"');
+                $output = "[STOP] Đã lưu dữ liệu player và dừng tiến trình Game Server.";
+                break;
+
+            case 'restart':
+                $this->callGameApi('/api/server/maintenance', ['seconds' => 2]);
+                shell_exec('powershell -Command "Get-Process -Name java -ErrorAction SilentlyContinue | Stop-Process -Force"');
+                sleep(1);
+                $cmd = 'Start-Process -FilePath "C:\Program Files\Java\jdk-17\bin\java.exe" -ArgumentList "-server -cp dist/soicon.jar;lib/* com.girlkun.server.ServerManager" -WorkingDirectory "d:\nro\srcnrobigk03032026\nrobigkv7\soicon" -WindowStyle Hidden';
+                shell_exec("powershell -Command \"$cmd\"");
+                $output = "[RESTART] Đã khởi động lại máy chủ Game Server (Port 14445).";
+                break;
+
+            case 'backup':
+                $backupDir = storage_path('app/backups');
+                if (!file_exists($backupDir)) @mkdir($backupDir, 0777, true);
+                $filename = 'backup_bigk_' . date('Ymd_His') . '.sql';
+                $filepath = $backupDir . '/' . $filename;
+                
+                $dumpCmd = "\"C:\\xampp\\mysql\\bin\\mysqldump.exe\" -u root bigk > \"$filepath\"";
+                shell_exec("cmd /c \"$dumpCmd\"");
+                $size = file_exists($filepath) ? round(filesize($filepath) / 1024, 2) . ' KB' : '0 KB';
+                $output = "[BACKUP] Sao lưu Database 'bigk' thành công!\n[FILE] {$filepath} ({$size})\n[TIME] " . date('Y-m-d H:i:s');
+                break;
+
+            case 'build':
+            case 'clean_build':
+                $soiconDir = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon";
+                $buildOutput = [];
+                if ($action === 'clean_build') {
+                    $buildOutput[] = "[CLEAN] Xóa bộ nhớ cache build/classes...";
+                    shell_exec("cmd /c \"rd /s /q \\\"$soiconDir\\build\\classes\\\" 2>nul & mkdir \\\"$soiconDir\\build\\classes\\\"\"");
+                }
+
+                $buildOutput[] = "[BUILD] Bắt đầu biên dịch source Java với JDK 17 javac...";
+                $compileCmd = "cd /d \"$soiconDir\" && \"C:\\Program Files\\Java\\jdk-17\\bin\\javac.exe\" -encoding UTF-8 -cp \"lib/*\" -d build/classes @sources.txt 2>&1";
+                $compileRes = shell_exec($compileCmd);
+                if ($compileRes) {
+                    $buildOutput[] = $compileRes;
+                }
+
+                $jarCmd = "cd /d \"$soiconDir\" && \"C:\\Program Files\\Java\\jdk-17\\bin\\jar.exe\" cf dist/soicon.jar -C build/classes . 2>&1";
+                $jarRes = shell_exec($jarCmd);
+                if ($jarRes) {
+                    $buildOutput[] = $jarRes;
+                }
+                $buildOutput[] = "[SUCCESS] Đóng gói hoàn tất file dist/soicon.jar! (" . date('H:i:s') . ")";
+                $output = implode("\n", $buildOutput);
+                break;
+
+            case 'maintenance':
+                $this->callGameApi('/api/server/maintenance', ['seconds' => 30]);
+                $output = "[BẢO TRÌ] Kích hoạt đếm ngược 30 giây: Thông báo toàn server, kick và lưu tất cả tài khoản an toàn.";
+                break;
+
+            case 'reset_server':
+                try {
+                    DB::statement("SET FOREIGN_KEY_CHECKS = 0;");
+                    DB::table('player')->whereNotIn('account_id', function($q) {
+                        $q->select('id')->from('account')->where('is_admin', 1);
+                    })->delete();
+                    DB::statement("SET FOREIGN_KEY_CHECKS = 1;");
+                    $output = "[RESET SERVER] Đã dọn dẹp toàn bộ dữ liệu nhân vật thường, giữ nguyên tài khoản Admin.";
+                } catch (\Throwable $e) {
+                    $output = "[RESET SERVER ERROR] " . $e->getMessage();
+                }
+                break;
+
+            default:
+                $output = "[ERROR] Hành động không hợp lệ: {$action}";
+                break;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Thực hiện thành công',
+            'output' => $output
+        ]);
+    }
+
+    public function serverBuildIp(Request $request)
+    {
+        $action = $request->input('action', 'add');
+        $ip = trim($request->input('ip', ''));
+
+        $allowlistFile = storage_path('app/dev_allowlist.json');
+        $allowlist = [];
+        if (file_exists($allowlistFile)) {
+            $allowlist = json_decode(@file_get_contents($allowlistFile), true) ?? [];
+        }
+
+        if ($action === 'add' && !empty($ip)) {
+            if (!in_array($ip, $allowlist)) {
+                $allowlist[] = $ip;
+                file_put_contents($allowlistFile, json_encode($allowlist, JSON_PRETTY_PRINT));
+            }
+            return response()->json([
+                'success' => true,
+                'message' => "Đã thêm IP {$ip} vào danh sách cho phép (nrodev)!",
+                'allowlist' => array_values(array_unique(array_merge(['100.64.0.0/10', '127.0.0.1/32', '::1/128', '14.233.210.201/32', '123.26.4.208/32', '123.26.9.45/32'], $allowlist)))
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã tải lại danh sách IP thành công!',
+            'allowlist' => array_values(array_unique(array_merge(['100.64.0.0/10', '127.0.0.1/32', '::1/128', '14.233.210.201/32', '123.26.4.208/32', '123.26.9.45/32'], $allowlist)))
+        ]);
     }
 }

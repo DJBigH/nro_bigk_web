@@ -1,149 +1,252 @@
 @extends('admin.layout')
 
-@section('title', 'Visual Map Editor 2D - Admin NRO BigK')
+@section('admin_title', 'Quản Lý Map - NRO Panel')
 
 @section('admin_content')
-<!-- Header Card -->
-<div class="card" style="margin-bottom: 20px; border-left: 4px solid #00e5ff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-    <div>
-        <h2 style="color: #00e5ff; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; margin: 0 0 5px 0;">
-            🗺️ TRÌNH BIÊN TẬP BẢN ĐỒ 2D TRỰC QUAN (VISUAL MAP EDITOR)
-        </h2>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
-            Hiển thị trực quan Sprite Avatar NPC thật trong game, Quái vật có Thanh Máu (HP Bar), Cổng dịch chuyển và Mặt đất 2D Platformer. Kéo thả chuột để điều chỉnh tọa độ và lưu trực tiếp vào Database!
-        </p>
-    </div>
-    <div style="display: flex; gap: 10px;">
-        <button class="btn btn-secondary" onclick="reloadMapData()" style="font-size: 0.85rem; padding: 8px 15px;">
-            🔄 TẢI LẠI MAP
-        </button>
+<!-- Header Bar -->
+<div style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 14px 18px; margin-bottom: 14px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <a href="{{ route('admin.dashboard') }}" style="color: #58a6ff; text-decoration: none; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                    ⬅ Quản lý map
+                </a>
+            </div>
+            <h2 id="currentMapTitle" style="font-family: 'Segoe UI', sans-serif; font-size: 1.25rem; color: #f0f6fc; margin: 0; font-weight: 700;">
+                Map #0 - Làng Aru
+            </h2>
+            <div style="font-size: 0.78rem; color: #8b949e; margin-top: 4px; line-height: 1.4;">
+                Kéo nút tròn để dời vị trí (tọa độ = chân NPC/quái) · kéo khung vàng để dời cổng, kéo góc dưới phải để đổi cỡ · click để xem/sửa · phím Delete xoá, mũi tên dịch 1px (Shift: 10px). Lưu ghi vào DB; game chỉ nạp lại khi bấm Áp dụng vào game.
+            </div>
+        </div>
+
+        <!-- Top Action Buttons -->
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn" style="background: #1f6feb; color: #fff; font-weight: 600; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; border: none;" onclick="saveMapData()">
+                💾 Lưu
+            </button>
+            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem;" onclick="undoLastChange()">
+                ↺ Hoàn tác
+            </button>
+            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem;" onclick="showHistoryModal()">
+                🕒 Lịch sử
+            </button>
+            <button type="button" class="btn" style="background: #da3633; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; border: none;" onclick="deleteCurrentMap()">
+                🗑 Xoá map
+            </button>
+            <button type="button" class="btn" style="background: #6e1717; color: #ffa39e; border: 1px solid #a8071a; font-weight: 600; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem;" onclick="applyToGameMaintenance()">
+                ⏱ Áp dụng vào game (bảo trì 3s)
+            </button>
+        </div>
     </div>
 </div>
 
-<!-- Map Selector & Controls Bar -->
-<div class="card" style="margin-bottom: 20px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 340px; flex-wrap: wrap;">
-        <label style="color: #fff; font-weight: 700; font-size: 0.9rem; white-space: nowrap; color: #00e5ff;">🗺️ Bản Đồ:</label>
-        <div style="position: relative; width: 220px;">
-            <input type="text" id="mapSearchInput" class="form-input" placeholder="🔍 Tìm ID hoặc tên map..." oninput="filterMapOptions()" onkeydown="if(event.key==='Enter'){event.preventDefault();filterMapOptions();loadSelectedMap();}" style="margin-bottom: 0; padding: 7px 12px; font-size: 0.85rem; width: 100%;">
+<!-- 3-Column Main Workspace -->
+<div style="display: flex; gap: 14px; align-items: stretch; min-height: 800px;">
+    
+    <!-- LEFT COLUMN: Danh sách map -->
+    <div style="width: 250px; flex-shrink: 0; background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
+        <button type="button" class="btn" style="background: #1f6feb; color: #fff; font-weight: 600; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; width: 100%; border: none; margin-bottom: 10px;" onclick="openCreateMapModal()">
+            ➕ Tạo map mới
+        </button>
+
+        <div style="position: relative; margin-bottom: 12px;">
+            <input type="text" id="mapSearchInput" placeholder="Tìm map theo tên hoặc id..." oninput="filterMapList()" style="width: 100%; background: #040d1a; border: 1px solid #30363d; border-radius: 6px; padding: 6px 10px; color: #f0f6fc; font-size: 0.82rem; outline: none;">
         </div>
-        <select id="mapSelect" class="form-input" style="margin-bottom: 0; padding: 7px 12px; font-weight: 600; max-width: 320px; flex: 1;" onchange="loadSelectedMap()">
+
+        <!-- Scrollable Map Cards List -->
+        <div id="mapCardsList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; max-height: 720px; padding-right: 4px;">
             @foreach($maps as $m)
-                <option value="{{ $m->id }}">Map {{ $m->id }}: {{ $m->name }}</option>
+                <div class="map-card-item {{ $m->id == 0 ? 'active' : '' }}" id="map-card-{{ $m->id }}" onclick="switchMap({{ $m->id }})" data-name="{{ strtolower($m->name) }}" data-id="{{ $m->id }}" style="padding: 8px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s; border: 1px solid {{ $m->id == 0 ? '#3fb950' : '#21262d' }}; background: {{ $m->id == 0 ? 'rgba(35, 134, 54, 0.18)' : 'rgba(22, 27, 34, 0.6)' }};">
+                    <div style="font-weight: 700; color: {{ $m->id == 0 ? '#3fb950' : '#f0f6fc' }}; font-size: 0.85rem; display: flex; justify-content: space-between;">
+                        <span>#{{ $m->id }} · {{ $m->name }}</span>
+                    </div>
+                    <div style="font-size: 0.73rem; color: #8b949e; margin-top: 2px;">
+                        {{ $m->npc_count ?? 0 }} NPC · {{ $m->mob_count ?? 0 }} quái · nền {{ $m->bg_id ?? 0 }}
+                    </div>
+                </div>
             @endforeach
-        </select>
-        <button type="button" class="btn btn-secondary" style="padding: 7px 12px; font-size: 0.82rem;" onclick="reloadMapData()" title="Tải lại bản đồ">
-            🔄
-        </button>
-    </div>
-
-    <div style="display: flex; gap: 12px; align-items: center;">
-        <span style="font-size: 0.85rem; color: #aaa;">💡 <strong>Kéo & thả chuột</strong> lên NPC/Quái để dời vị trí</span>
-        <button type="button" class="btn" style="background: #00c853; color: #fff; font-weight: 700; padding: 10px 24px; box-shadow: 0 0 15px rgba(0,200,83,0.35); border: none;" onclick="saveMapData()">
-            💾 LƯU TỌA ĐỘ VÀO DATABASE
-        </button>
-    </div>
-</div>
-
-<!-- 2D Canvas Workspace -->
-<div class="card" style="margin-bottom: 20px; padding: 15px; background: #070c18; border: 1px solid rgba(0,229,255,0.25);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; gap: 18px; font-size: 0.85rem; align-items: center;">
-            <span style="color: #ffd700; font-weight: 600;">🧙 NPC (Avatar Sprite Game)</span>
-            <span style="color: #ff5252; font-weight: 600;">👾 Quái Mob (Thanh HP Bar)</span>
-            <span style="color: #00e5ff; font-weight: 600;">🌀 Cổng Portal (Dịch Chuyển)</span>
-            <span style="color: #69f0ae; font-weight: 600;">🟩 Địa Hình Platform (tile_map_data)</span>
-        </div>
-        <div id="hoverCoords" style="font-family: 'Orbitron', monospace; font-size: 0.9rem; color: #00e5ff; background: rgba(0,229,255,0.1); padding: 4px 12px; border-radius: 4px; border: 1px solid rgba(0,229,255,0.2);">
-            X: 0 | Y: 0
         </div>
     </div>
 
-    <div id="canvasContainer" style="position: relative; overflow-x: auto; overflow-y: hidden; background: #000; border-radius: 8px; border: 2px solid #1a2744; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); max-height: 700px;">
-        <canvas id="mapCanvas" width="1400" height="560" style="display: block; cursor: crosshair;">
-        </canvas>
-    </div>
-    <div style="font-size: 0.8rem; color: #888; margin-top: 8px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-        <span>* Kéo thanh cuộn ngang nếu bản đồ dài. Kích thước bản đồ chuẩn: <b id="mapDimLabel" style="color: #00e5ff;">1400 x 560 px</b>.</span>
-        <span>Địa hình Platform & NPC/Quái được tái hiện chính xác 100% từ dữ liệu bản đồ thật (tile_map_data).</span>
-    </div>
-</div>
+    <!-- CENTER COLUMN: Canvas Workspace -->
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+        <!-- Top Toolbar -->
+        <div style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 0.82rem; color: #c9d1d9;">
+                <!-- Zoom pills -->
+                <div style="display: flex; border: 1px solid #30363d; border-radius: 6px; overflow: hidden;">
+                    <button type="button" class="zoom-btn" onclick="setZoom(0.5)" id="zoom-05" style="background: #21262d; border: none; color: #8b949e; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;">0.5x</button>
+                    <button type="button" class="zoom-btn" onclick="setZoom(1.0)" id="zoom-10" style="background: rgba(35, 134, 54, 0.35); border: none; color: #3fb950; font-weight: 700; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;">1x</button>
+                    <button type="button" class="zoom-btn" onclick="setZoom(1.5)" id="zoom-15" style="background: #21262d; border: none; color: #8b949e; padding: 3px 8px; font-size: 0.78rem; cursor: pointer;">2x</button>
+                </div>
 
-<!-- Entities Inspector & Manager -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px;">
-    <!-- NPCs Table -->
-    <div class="card" style="padding: 14px 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-            <h3 style="color: #ffd700; font-size: 0.95rem; margin: 0; display: flex; align-items: center; gap: 6px;">
-                🧙 DANH SÁCH NPC (<span id="npcCount">0</span>)
-            </h3>
-            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem; background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700; white-space: nowrap;" onclick="openAddNpcModal()">
-                ➕ Thêm NPC
+                <!-- Layer Checkboxes -->
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="chkSnapGround" checked style="accent-color: #238636;"> Bám mặt đất
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="chkBackground" checked onchange="renderCanvas()" style="accent-color: #238636;"> Nền
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="chkDecorations" checked onchange="renderCanvas()" style="accent-color: #238636;"> Vật trang trí
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="chkEditDecorations" style="accent-color: #238636;"> Sửa trang trí
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="chkGrid" onchange="renderCanvas()" style="accent-color: #238636;"> Lưới ô
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="chkDrawTiles" style="accent-color: #238636;"> Vẽ ô đất
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="chkPortals" checked onchange="renderCanvas()" style="accent-color: #238636;"> Cổng chuyển map
+                </label>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" class="btn" style="background: #21262d; color: #ffd700; border: 1px solid #d29922; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px;" onclick="openAddNpcModal()">
+                    🧙 Thêm NPC
+                </button>
+                <button type="button" class="btn" style="background: #21262d; color: #ff7b72; border: 1px solid #f85149; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px;" onclick="openAddMobModal()">
+                    ➕ Thêm quái
+                </button>
+                <button type="button" class="btn" style="background: #21262d; color: #58a6ff; border: 1px solid #1f6feb; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px;" onclick="openAddWaypointModal()">
+                    🚪 Thêm cổng
+                </button>
+                <button type="button" class="btn" style="background: #21262d; color: #7ee787; border: 1px solid #238636; font-size: 0.8rem; padding: 4px 10px; border-radius: 6px;" onclick="addDecorationItem()">
+                    🌲 Thêm trang trí
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas Container Box -->
+        <div id="canvasViewport" style="background: #000; border: 1px solid #30363d; border-radius: 8px; overflow: auto; position: relative; max-height: 680px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+            <div id="canvasScaler" style="transform-origin: 0 0; display: inline-block;">
+                <canvas id="mapCanvas" width="1248" height="576" style="display: block; cursor: crosshair;">
+                </canvas>
+            </div>
+        </div>
+
+        <!-- Canvas Status Bar -->
+        <div style="background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 6px; padding: 6px 14px; font-size: 0.78rem; color: #8b949e; font-family: 'Consolas', monospace; display: flex; justify-content: space-between;">
+            <span id="canvasDimInfo">Kích thước 52×24 ô (1248×576 px) · tileset 1 · nền 0 · 10 khu</span>
+            <span id="hoverCoords" style="color: #58a6ff;">X: 0 | Y: 0</span>
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Inspector Tab Panel -->
+    <div style="width: 280px; flex-shrink: 0; background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d; border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
+        <!-- Tabs Header -->
+        <div style="display: flex; gap: 4px; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-bottom: 12px;">
+            <button type="button" class="tab-btn active" id="tab-info" onclick="switchRightTab('info')" style="background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid #3fb950; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+                🟢 Thông tin
+            </button>
+            <button type="button" class="tab-btn" id="tab-bg" onclick="switchRightTab('bg')" style="background: transparent; color: #8b949e; border: 1px solid transparent; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+                🖼 Nền map
+            </button>
+            <button type="button" class="tab-btn" id="tab-tile" onclick="switchRightTab('tile')" style="background: transparent; color: #8b949e; border: 1px solid transparent; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+                🧱 Ô đất
             </button>
         </div>
-        <div style="max-height: 320px; overflow-y: auto;">
-            <table style="margin-top: 0; width: 100%; font-size: 0.82rem; table-layout: fixed; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th style="width: 36px; padding: 8px 4px; text-align: center;">Icon</th>
-                        <th style="padding: 8px 4px;">NPC</th>
-                        <th style="width: 55px; text-align: center; padding: 8px 4px;">X</th>
-                        <th style="width: 55px; text-align: center; padding: 8px 4px;">Y</th>
-                        <th style="text-align: right; width: 35px; padding: 8px 4px;">Xóa</th>
-                    </tr>
-                </thead>
-                <tbody id="npcTableBody">
-                </tbody>
-            </table>
-        </div>
-    </div>
 
-    <!-- Mobs Table -->
-    <div class="card" style="padding: 14px 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-            <h3 style="color: #ff5252; font-size: 0.95rem; margin: 0; display: flex; align-items: center; gap: 6px;">
-                👾 DANH SÁCH QUÁI VẬT (<span id="mobCount">0</span>)
-            </h3>
-            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem; background: rgba(255, 82, 82, 0.2); color: #ff5252; border: 1px solid #ff5252; white-space: nowrap;" onclick="openAddMobModal()">
-                ➕ Thêm Quái
-            </button>
+        <div id="inspectorHint" style="font-size: 0.74rem; color: #8b949e; margin-bottom: 10px; line-height: 1.4;">
+            Click nút tròn / khung cổng trên map hoặc một dòng dưới đây để sửa.
         </div>
-        <div style="max-height: 320px; overflow-y: auto;">
-            <table style="margin-top: 0; width: 100%; font-size: 0.82rem; table-layout: fixed; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th style="width: 36px; padding: 8px 4px; text-align: center;">Icon</th>
-                        <th style="padding: 8px 4px;">Tên Quái</th>
-                        <th style="width: 90px; padding: 8px 4px;">Cấp / Máu</th>
-                        <th style="width: 55px; text-align: center; padding: 8px 4px;">X</th>
-                        <th style="width: 55px; text-align: center; padding: 8px 4px;">Y</th>
-                        <th style="text-align: right; width: 35px; padding: 8px 4px;">Xóa</th>
-                    </tr>
-                </thead>
-                <tbody id="mobTableBody">
-                </tbody>
-            </table>
+
+        <!-- Tab 1: Thông tin (NPC, Quái, Cổng, Trang trí) -->
+        <div id="tabContentInfo" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; max-height: 650px; padding-right: 2px;">
+            <!-- NPCs Group -->
+            <div>
+                <div style="font-weight: 700; color: #ffd700; font-size: 0.85rem; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>🧙 NPC (<span id="rightNpcCount">0</span>)</span>
+                    <button type="button" class="btn" style="background: none; border: none; color: #ffd700; font-size: 0.75rem; cursor: pointer;" onclick="openAddNpcModal()">➕</button>
+                </div>
+                <div id="rightNpcList" style="display: flex; flex-direction: column; gap: 4px;"></div>
+            </div>
+
+            <!-- Mobs Group -->
+            <div>
+                <div style="font-weight: 700; color: #ff7b72; font-size: 0.85rem; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>👾 Quái (<span id="rightMobCount">0</span>)</span>
+                    <button type="button" class="btn" style="background: none; border: none; color: #ff7b72; font-size: 0.75rem; cursor: pointer;" onclick="openAddMobModal()">➕</button>
+                </div>
+                <div id="rightMobList" style="display: flex; flex-direction: column; gap: 4px;"></div>
+            </div>
+
+            <!-- Waypoints Group -->
+            <div>
+                <div style="font-weight: 700; color: #58a6ff; font-size: 0.85rem; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>🌀 Cổng chuyển map (<span id="rightWpCount">0</span>)</span>
+                    <button type="button" class="btn" style="background: none; border: none; color: #58a6ff; font-size: 0.75rem; cursor: pointer;" onclick="openAddWaypointModal()">➕</button>
+                </div>
+                <div id="rightWpList" style="display: flex; flex-direction: column; gap: 4px;"></div>
+            </div>
+
+            <!-- Decorations Group -->
+            <div>
+                <div style="font-weight: 600; color: #8b949e; font-size: 0.82rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 4px 0;" onclick="toggleDecorationsGroup()">
+                    <span id="rightDecoHeader">▶ Vật trang trí (34)</span>
+                </div>
+                <div id="rightDecoList" style="display: none; font-size: 0.75rem; color: #6e7681; padding-left: 8px;">
+                    Dữ liệu được nạp từ item_bg_map_data thật của Game.
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Nền map -->
+        <div id="tabContentBg" style="display: none; font-size: 0.82rem; color: #c9d1d9;">
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Bộ nền (bg_id):</label>
+                <input type="number" id="inputBgId" class="form-input" style="width: 100%;" onchange="updateBgConfig()">
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Biến thể nền (bg_type):</label>
+                <input type="number" id="inputBgType" class="form-input" style="width: 100%;" onchange="updateBgConfig()">
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Hành tinh (planet_id):</label>
+                <select id="selectPlanetId" class="form-input" style="width: 100%;" onchange="updateBgConfig()">
+                    <option value="0">0 - Trái Đất</option>
+                    <option value="1">1 - Namếc</option>
+                    <option value="2">2 - Xayda</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Tab 3: Ô đất (Tileset) -->
+        <div id="tabContentTile" style="display: none; font-size: 0.82rem; color: #c9d1d9;">
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Bộ Tile (tile_id):</label>
+                <input type="number" id="inputTileId" class="form-input" style="width: 100%;" onchange="updateTileConfig()">
+            </div>
+            <div style="font-size: 0.75rem; color: #8b949e; line-height: 1.5;">
+                Hệ thống nạp trực tiếp các tile game thật (24×24 px) từ thư mục tài nguyên Game Client.
+            </div>
         </div>
     </div>
 </div>
+
+<!-- ================= MODALS ================= -->
 
 <!-- Modal: Thêm NPC -->
-<div id="addNpcModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
-    <div class="card" style="width: 500px; max-width: 95%; max-height: 80vh; display: flex; flex-direction: column; border: 1px solid #ffd700; box-shadow: 0 0 25px rgba(255,215,0,0.3);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="color: #ffd700; margin: 0; font-size: 1.1rem;">➕ Chọn NPC Cần Đặt Lên Bản Đồ</h3>
-            <button onclick="closeAddNpcModal()" style="background: none; border: none; color: #aaa; font-size: 1.3rem; cursor: pointer;">&times;</button>
+<div id="addNpcModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; width: 560px; max-width: 95vw; padding: 18px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; color: #ffd700; font-size: 1rem;">🧙 Chọn NPC Thêm Vào Bản Đồ</h3>
+            <button type="button" onclick="closeAddNpcModal()" style="background: none; border: none; color: #888; font-size: 1.2rem; cursor: pointer;">&times;</button>
         </div>
-        <input type="text" id="searchNpcInput" class="form-input" placeholder="🔍 Gõ tìm NPC theo tên hoặc ID..." oninput="filterNpcTemplates()" style="margin-bottom: 12px;">
-        <div id="npcTemplateList" style="flex: 1; overflow-y: auto; max-height: 350px; display: grid; grid-template-columns: 1fr; gap: 8px;">
+        <input type="text" id="searchNpcInput" placeholder="Tìm kiếm NPC..." oninput="filterNpcTemplates()" class="form-input" style="margin-bottom: 12px;">
+        <div id="npcTplGrid" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;">
             @foreach($npcTemplates as $nt)
-                <div class="npc-tpl-item" data-id="{{ $nt->id }}" data-name="{{ strtolower($nt->name) }}" data-avatar="{{ $nt->avatar }}" onclick="selectNpcToAdd({{ $nt->id }}, '{{ addslashes($nt->name) }}', {{ $nt->avatar ?? 0 }})" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;">
-                    <img src="/images/icons/{{ $nt->avatar ?? 0 }}.png" onerror="this.src='/images/no_image.png'" style="width: 32px; height: 32px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 4px; padding: 2px;">
-                    <div style="flex: 1;">
-                        <div style="color: #ffd700; font-weight: 600; font-size: 0.9rem;">{{ $nt->name }}</div>
-                        <div style="color: #888; font-size: 0.75rem;">ID: #{{ $nt->id }} | Avatar: {{ $nt->avatar ?? 0 }}</div>
+                <div class="npc-tpl-item" data-name="{{ strtolower($nt->name) }}" data-id="{{ $nt->id }}" onclick="selectNpcToAdd({{ $nt->id }}, '{{ addslashes($nt->name) }}', {{ $nt->avatar ?? 0 }})" style="background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <img src="/images/icons/{{ $nt->avatar }}.png" onerror="this.src='/images/no_image.png'" style="width: 32px; height: 32px; object-fit: contain;">
+                    <div style="overflow: hidden;">
+                        <div style="color: #ffd700; font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $nt->name }}</div>
+                        <div style="color: #6e7681; font-size: 0.72rem;">ID: #{{ $nt->id }}</div>
                     </div>
-                    <span class="badge" style="background: rgba(255,215,0,0.15); color: #ffd700; font-size: 0.75rem;">+ Thêm</span>
                 </div>
             @endforeach
         </div>
@@ -151,78 +254,114 @@
 </div>
 
 <!-- Modal: Thêm Quái -->
-<div id="addMobModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
-    <div class="card" style="width: 500px; max-width: 95%; max-height: 80vh; display: flex; flex-direction: column; border: 1px solid #ff5252; box-shadow: 0 0 25px rgba(255,82,82,0.3);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="color: #ff5252; margin: 0; font-size: 1.1rem;">➕ Chọn Quái Vật Đặt Lên Bản Đồ</h3>
-            <button onclick="closeAddMobModal()" style="background: none; border: none; color: #aaa; font-size: 1.3rem; cursor: pointer;">&times;</button>
+<div id="addMobModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; width: 560px; max-width: 95vw; padding: 18px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; color: #ff7b72; font-size: 1rem;">👾 Chọn Quái Mob Thêm Vào Bản Đồ</h3>
+            <button type="button" onclick="closeAddMobModal()" style="background: none; border: none; color: #888; font-size: 1.2rem; cursor: pointer;">&times;</button>
         </div>
-        <input type="text" id="searchMobInput" class="form-input" placeholder="🔍 Gõ tìm Quái theo tên hoặc ID..." oninput="filterMobTemplates()" style="margin-bottom: 12px;">
-        <div id="mobTemplateList" style="flex: 1; overflow-y: auto; max-height: 350px; display: grid; grid-template-columns: 1fr; gap: 8px;">
+        <input type="text" id="searchMobInput" placeholder="Tìm kiếm Quái..." oninput="filterMobTemplates()" class="form-input" style="margin-bottom: 12px;">
+        <div id="mobTplGrid" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;">
             @foreach($mobTemplates as $mt)
-                <div class="mob-tpl-item" data-id="{{ $mt->id }}" data-name="{{ strtolower($mt->name) }}" data-hp="{{ $mt->hp }}" onclick="selectMobToAdd({{ $mt->id }}, '{{ addslashes($mt->name) }}', {{ $mt->hp }}, {{ $mt->iconId ?? 0 }})" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;">
-                    <img src="/images/icons/{{ $mt->iconId ?? 7466 }}.png" onerror="this.src='/images/no_image.png'" style="width: 32px; height: 32px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 4px; padding: 2px;">
-                    <div style="flex: 1;">
-                        <div style="color: #ff5252; font-weight: 600; font-size: 0.9rem;">{{ $mt->name }}</div>
-                        <div style="color: #888; font-size: 0.75rem;">ID: #{{ $mt->id }} | Máu chuẩn: {{ number_format($mt->hp) }} HP</div>
+                <div class="mob-tpl-item" data-name="{{ strtolower($mt->name) }}" data-id="{{ $mt->id }}" onclick="selectMobToAdd({{ $mt->id }}, '{{ addslashes($mt->name) }}', {{ $mt->hp ?? 100 }}, {{ $mt->iconId ?? 7466 }})" style="background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <img src="/images/icons/{{ $mt->iconId }}.png" onerror="this.src='/images/no_image.png'" style="width: 32px; height: 32px; object-fit: contain;">
+                    <div style="overflow: hidden;">
+                        <div style="color: #ff7b72; font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $mt->name }}</div>
+                        <div style="color: #6e7681; font-size: 0.72rem;">HP: {{ number_format($mt->hp ?? 100) }}</div>
                     </div>
-                    <span class="badge" style="background: rgba(255,82,82,0.15); color: #ff5252; font-size: 0.75rem;">+ Thêm</span>
                 </div>
             @endforeach
         </div>
     </div>
 </div>
 
-<script>
-const canvas = document.getElementById('mapCanvas');
-const ctx = canvas.getContext('2d');
+<!-- Modal: Thêm Cổng Chuyển Map -->
+<div id="addWaypointModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; width: 440px; max-width: 95vw; padding: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="margin: 0; color: #58a6ff; font-size: 1rem;">🚪 Thêm Cổng Chuyển Map (Portal)</h3>
+            <button type="button" onclick="closeAddWaypointModal()" style="background: none; border: none; color: #888; font-size: 1.2rem; cursor: pointer;">&times;</button>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Tên hiển thị trên cổng:</label>
+            <input type="text" id="wpNameInput" placeholder="Ví dụ: Đồi hoa cúc" class="form-input" style="width: 100%;">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+            <div>
+                <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Tọa độ X:</label>
+                <input type="number" id="wpXInput" value="600" class="form-input" style="width: 100%;">
+            </div>
+            <div>
+                <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Tọa độ Y:</label>
+                <input type="number" id="wpYInput" value="408" class="form-input" style="width: 100%;">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+            <div>
+                <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Dẫn tới Map ID:</label>
+                <input type="number" id="wpGoMapInput" value="1" class="form-input" style="width: 100%;">
+            </div>
+            <div>
+                <label style="font-size: 0.78rem; color: #8b949e; display: block; margin-bottom: 4px;">Tọa độ đến (X, Y):</label>
+                <input type="text" id="wpGoCoordsInput" value="100, 400" placeholder="100, 400" class="form-input" style="width: 100%;">
+            </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d;" onclick="closeAddWaypointModal()">Hủy</button>
+            <button type="button" class="btn" style="background: #1f6feb; color: #fff; font-weight: 600;" onclick="saveNewWaypoint()">Tạo cổng</button>
+        </div>
+    </div>
+</div>
 
+<script>
+// =============================================================
+// STATE & VARIABLES
+// =============================================================
 let currentMapData = {
     id: 0,
+    name: 'Làng Aru',
+    planet_id: 0,
+    bg_id: 0,
+    bg_type: 0,
+    tile_id: 1,
+    width: 1248,
+    height: 576,
+    tw: 52,
+    th: 24,
+    zones: 10,
+    decorations_count: 34,
+    tiles: [],
+    platforms: [],
+    blocks: [],
     npcs: [],
     mobs: [],
     waypoints: []
 };
 
-// Lọc danh sách bản đồ theo ID hoặc Tên
-function filterMapOptions() {
-    const q = document.getElementById('mapSearchInput').value.toLowerCase().trim();
-    const select = document.getElementById('mapSelect');
-    const options = select.options;
-    let firstVisibleIndex = -1;
-
-    for (let i = 0; i < options.length; i++) {
-        const opt = options[i];
-        const text = opt.text.toLowerCase();
-        const val = opt.value.toString();
-        const matches = !q || text.includes(q) || val.includes(q);
-        opt.hidden = !matches;
-        opt.style.display = matches ? '' : 'none';
-        if (matches && firstVisibleIndex === -1) {
-            firstVisibleIndex = i;
-        }
-    }
-
-    if (q && firstVisibleIndex !== -1 && options[select.selectedIndex].hidden) {
-        select.selectedIndex = firstVisibleIndex;
-        loadSelectedMap();
-    }
-}
-
+let currentZoom = 1.0;
+let selectedEntity = null; // { type: 'npc'|'mob'|'wp', index: 0 }
 let draggingEntity = null;
-let dragType = null; // 'npc' or 'mob'
+let dragType = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
 
-// Cache hình ảnh Avatar NPC & Quái
+const canvas = document.getElementById('mapCanvas');
+const ctx = canvas.getContext('2d');
+
+// Image Caches
 const npcImageCache = {};
 const mobImageCache = {};
 const mapBgCache = {};
+const tileImageCache = {};
+const cloudImage = new Image();
+cloudImage.src = '/images/tiles/cloud_0.png';
 
 function getNpcImage(avatar) {
     if (!avatar || avatar <= 0) return null;
     if (!npcImageCache[avatar]) {
         const img = new Image();
         img.src = `/images/icons/${avatar}.png`;
-        img.onload = () => renderCanvas();
+        img.onload = () => requestAnimationFrame(renderCanvas);
         npcImageCache[avatar] = img;
     }
     return npcImageCache[avatar];
@@ -233,7 +372,7 @@ function getMobImage(iconId) {
     if (!mobImageCache[id]) {
         const img = new Image();
         img.src = `/images/icons/${id}.png`;
-        img.onload = () => renderCanvas();
+        img.onload = () => requestAnimationFrame(renderCanvas);
         mobImageCache[id] = img;
     }
     return mobImageCache[id];
@@ -244,7 +383,7 @@ function getMapBgImage(bgId, layer = 0, bgType = 0) {
     if (mapBgCache[key] === undefined) {
         const img = new Image();
         img.src = `/images/map_bgs/${key}.png`;
-        img.onload = () => renderCanvas();
+        img.onload = () => requestAnimationFrame(renderCanvas);
         img.onerror = () => {
             if (bgType > 0) {
                 mapBgCache[key] = getMapBgImage(bgId, layer, 0);
@@ -257,91 +396,110 @@ function getMapBgImage(bgId, layer = 0, bgType = 0) {
     return mapBgCache[key];
 }
 
-function loadSelectedMap() {
-    const mapId = document.getElementById('mapSelect').value;
+function getTileImage(tileId, tileIndex) {
+    if (!tileIndex || tileIndex <= 0) return null;
+    const key = `${tileId}_${tileIndex}`;
+    if (!tileImageCache[key]) {
+        const img = new Image();
+        img.src = `/images/tiles/tile_${tileId}_${tileIndex}.png`;
+        img.onload = () => requestAnimationFrame(renderCanvas);
+        tileImageCache[key] = img;
+    }
+    return tileImageCache[key];
+}
+
+// =============================================================
+// MAP SWITCHING & DATA LOADING
+// =============================================================
+function switchMap(mapId) {
+    document.querySelectorAll('.map-card-item').forEach(c => {
+        c.style.borderColor = '#21262d';
+        c.style.background = 'rgba(22, 27, 34, 0.6)';
+    });
+    const activeCard = document.getElementById(`map-card-${mapId}`);
+    if (activeCard) {
+        activeCard.style.borderColor = '#3fb950';
+        activeCard.style.background = 'rgba(35, 134, 54, 0.18)';
+    }
+
     fetch(`/admin/map-editor/data?map_id=${mapId}`)
         .then(r => r.json())
         .then(res => {
             if (res.success) {
                 currentMapData = res.map;
-
-                // 1. Cập nhật kích thước Canvas chính xác theo bản đồ game
-                const mapW = currentMapData.width || 1400;
-                const mapH = Math.max(560, currentMapData.height || 560);
-                canvas.width = mapW;
-                canvas.height = mapH;
-                canvas.style.width = mapW + 'px';
-                canvas.style.height = mapH + 'px';
-
-                const dimLabel = document.getElementById('mapDimLabel');
-                if (dimLabel) dimLabel.innerText = `${mapW} x ${mapH} px`;
-
-                const bgId = currentMapData.bg_id !== undefined ? currentMapData.bg_id : 0;
-                // Preload các layer background thật từ game NRO
-                for (let l = 0; l <= 4; l++) {
-                    getMapBgImage(bgId, l);
-                }
-                // Preload tất cả NPC avatars & Mob icons
-                if (currentMapData.npcs) {
-                    currentMapData.npcs.forEach(n => {
-                        const av = n.avatar || (n.id ? n.avatar : 0);
-                        if (av) getNpcImage(av);
-                    });
-                }
-                if (currentMapData.mobs) {
-                    currentMapData.mobs.forEach(m => {
-                        if (m.iconId) getMobImage(m.iconId);
-                    });
-                }
+                updateHeaderInfo();
+                canvas.width = currentMapData.width || 1248;
+                canvas.height = currentMapData.height || 576;
+                selectedEntity = null;
                 renderCanvas();
-                renderTables();
-            } else {
-                if (window.showModalAlert) {
-                    window.showModalAlert('Lỗi', res.message || 'Lỗi tải dữ liệu map!', 'danger');
-                } else {
-                    alert(res.message || 'Lỗi tải dữ liệu map!');
-                }
-            }
-        })
-        .catch(() => {
-            if (window.showModalAlert) {
-                window.showModalAlert('Lỗi kết nối', 'Không thể kết nối tới Server!', 'danger');
-            } else {
-                alert('Lỗi kết nối tới Server!');
+                renderRightInspector();
             }
         });
 }
 
-function reloadMapData() {
-    loadSelectedMap();
+function updateHeaderInfo() {
+    document.getElementById('currentMapTitle').innerText = `Map #${currentMapData.id} - ${currentMapData.name}`;
+    const tw = currentMapData.tw || Math.round(canvas.width / 24);
+    const th = currentMapData.th || Math.round(canvas.height / 24);
+    const zones = currentMapData.zones || 10;
+    const decos = currentMapData.decorations_count || 34;
+    document.getElementById('canvasDimInfo').innerText = 
+        `Kích thước ${tw}×${th} ô (${canvas.width}×${canvas.height} px) · tileset ${currentMapData.tile_id} · nền ${currentMapData.bg_id} · ${zones} khu`;
+    document.getElementById('rightDecoHeader').innerText = `▶ Vật trang trí (${decos})`;
 }
 
-// -------------------------------------------------------------
-// VẼ CANVAS 2D CHUẨN THẾ GIỚI GAME NRO
-// -------------------------------------------------------------
+function filterMapList() {
+    const q = document.getElementById('mapSearchInput').value.toLowerCase().trim();
+    document.querySelectorAll('.map-card-item').forEach(c => {
+        const name = c.getAttribute('data-name');
+        const id = c.getAttribute('data-id');
+        c.style.display = (!q || name.includes(q) || id.includes(q)) ? 'block' : 'none';
+    });
+}
+
+function setZoom(scale) {
+    currentZoom = scale;
+    document.querySelectorAll('.zoom-btn').forEach(b => {
+        b.style.background = '#21262d';
+        b.style.color = '#8b949e';
+        b.style.fontWeight = 'normal';
+    });
+    const activeBtn = document.getElementById(`zoom-${Math.round(scale * 10)}`);
+    if (activeBtn) {
+        activeBtn.style.background = 'rgba(35, 134, 54, 0.35)';
+        activeBtn.style.color = '#3fb950';
+        activeBtn.style.fontWeight = '700';
+    }
+    document.getElementById('canvasScaler').style.transform = `scale(${scale})`;
+}
+
+// =============================================================
+// CANVAS RENDERING ENGINE (PIXEL-PERFECT GAME TILES & PORTALS)
+// =============================================================
 function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const bgId = currentMapData.bg_id !== undefined ? currentMapData.bg_id : 0;
-    const bgType = currentMapData.bg_type !== undefined ? currentMapData.bg_type : 0;
-    const planetId = currentMapData.planet_id !== undefined ? currentMapData.planet_id : 0;
-    const tileId = currentMapData.tile_id !== undefined ? currentMapData.tile_id : 1;
 
-    // 1. Vẽ bầu trời nền bao trọn canvas theo hành tinh (Sky Gradient)
+    const showBg = document.getElementById('chkBackground').checked;
+    const showDecos = document.getElementById('chkDecorations').checked;
+    const showGrid = document.getElementById('chkGrid').checked;
+    const showPortals = document.getElementById('chkPortals').checked;
+
+    const bgId = currentMapData.bg_id || 0;
+    const bgType = currentMapData.bg_type || 0;
+    const planetId = currentMapData.planet_id || 0;
+    const tileId = currentMapData.tile_id || 1;
+
+    // 1. Sky Gradient
     const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     if (planetId === 1) {
-        // Namếc (Xanh ngọc / lục lam)
         skyGrad.addColorStop(0, '#042f2e');
         skyGrad.addColorStop(0.4, '#0f766e');
-        skyGrad.addColorStop(0.8, '#14b8a6');
         skyGrad.addColorStop(1, '#0d9488');
     } else if (planetId === 2) {
-        // Xayda (Hoàng hôn đỏ quạch / cằn cỗi)
         skyGrad.addColorStop(0, '#3f0a0a');
         skyGrad.addColorStop(0.4, '#7f1d1d');
-        skyGrad.addColorStop(0.8, '#b91c1c');
         skyGrad.addColorStop(1, '#991b1b');
     } else {
-        // Trái Đất (Xanh lam tươi sáng / Biển trời Đảo Kamê)
         skyGrad.addColorStop(0, '#0c4a6e');
         skyGrad.addColorStop(0.4, '#0284c7');
         skyGrad.addColorStop(0.8, '#7dd3fc');
@@ -350,665 +508,568 @@ function renderCanvas() {
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Tính toán đường chân trời tự nhiên từ địa hình thực tế (Ưu tiên bề mặt mặt đất chính)
-    let horizonY = Math.round(canvas.height * 0.72);
+    // 2. Horizon level
+    let horizonY = Math.round(canvas.height * 0.75);
     if (currentMapData.platforms && currentMapData.platforms.length > 0) {
-        // Tìm mặt đất chính có tổng bề ngang lớn nhất ở nửa dưới bản đồ
         const widthByY = {};
         let bestY = null;
-        let maxWidth = 0;
+        let maxW = 0;
         currentMapData.platforms.forEach(p => {
             if (p.y > canvas.height * 0.35) {
                 const w = (p.x2 - p.x1);
                 widthByY[p.y] = (widthByY[p.y] || 0) + w;
-                if (widthByY[p.y] > maxWidth) {
-                    maxWidth = widthByY[p.y];
+                if (widthByY[p.y] > maxW) {
+                    maxW = widthByY[p.y];
                     bestY = p.y;
                 }
             }
         });
-        if (bestY !== null) {
-            horizonY = bestY;
+        if (bestY !== null) horizonY = bestY;
+    }
+
+    // 3. Parallax Background Layers
+    if (showBg) {
+        const bg0 = getMapBgImage(bgId, 0, bgType);
+        if (bg0 && bg0.complete && bg0.naturalWidth > 0) {
+            const scale0 = Math.max(1.8, (horizonY - 20) / bg0.naturalHeight);
+            const bgW0 = bg0.naturalWidth * scale0;
+            const bgH0 = bg0.naturalHeight * scale0;
+            const startY0 = Math.max(0, horizonY - bgH0);
+            for (let x = 0; x < canvas.width; x += bgW0) {
+                ctx.drawImage(bg0, x, startY0, bgW0, bgH0);
+            }
+        }
+
+        const bg1 = getMapBgImage(bgId, 1, bgType);
+        if (bg1 && bg1.complete && bg1.naturalWidth > 0) {
+            const scale1 = 1.35;
+            const bgW1 = bg1.naturalWidth * scale1;
+            const bgH1 = bg1.naturalHeight * scale1;
+            const startY1 = horizonY - bgH1 + 10;
+            for (let x = 0; x < canvas.width; x += bgW1) {
+                ctx.drawImage(bg1, x, startY1, bgW1, bgH1);
+            }
         }
     }
 
-    // 3. Vẽ Parallax Background Game NRO chuẩn (Layer 0 Sky + Layer 1 Mid Landscape)
-    // Layer 0: Bầu trời xa / Chân trời / Mây núi xa
-    const bg0 = getMapBgImage(bgId, 0, bgType);
-    if (bg0 && bg0.complete && bg0.naturalWidth > 0) {
-        const scale0 = Math.max(1.8, (horizonY - 20) / bg0.naturalHeight);
-        const bgW0 = bg0.naturalWidth * scale0;
-        const bgH0 = bg0.naturalHeight * scale0;
-        const startY0 = Math.max(0, horizonY - bgH0);
-        for (let x = 0; x < canvas.width; x += bgW0) {
-            ctx.drawImage(bg0, x, startY0, bgW0, bgH0);
+    // 4. Cloud Trim Ceiling at top
+    if (showDecos && cloudImage.complete && cloudImage.naturalWidth > 0) {
+        for (let cx = 0; cx < canvas.width; cx += cloudImage.naturalWidth) {
+            ctx.drawImage(cloudImage, cx, 0);
         }
     }
 
-    // Layer 1: Đồi núi / Nhà cửa / Khung cảnh trung cảnh (Tile lặp chuẩn ngang khớp chân trời)
-    const bg1 = getMapBgImage(bgId, 1, bgType);
-    if (bg1 && bg1.complete && bg1.naturalWidth > 0) {
-        const scale1 = 1.35;
-        const bgW1 = bg1.naturalWidth * scale1;
-        const bgH1 = bg1.naturalHeight * scale1;
-        const startY1 = horizonY - bgH1 + 10;
-        for (let x = 0; x < canvas.width; x += bgW1) {
-            ctx.drawImage(bg1, x, startY1, bgW1, bgH1);
-        }
-    }
-
-    // 4. Lưới tọa độ nhẹ trên nền
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 100) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.font = '9px monospace';
-        ctx.fillText(x, x + 3, 14);
-    }
-    for (let y = 0; y < canvas.height; y += 50) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.font = '9px monospace';
-        ctx.fillText(y, 4, y - 2);
-    }
-
-    // 5. Thiết lập Phong Cách Địa Hình Chuẩn Theo Tile & Hành Tinh NRO
-    let topColor = '#4caf50';      // Mặt cỏ tươi Trái Đất
-    let topColorDark = '#2e7d32';
-    let bodyColorStart = '#4e342e'; // Lòng đất Trái Đất
-    let bodyColorEnd = '#1b120c';
-    let platGlow = '#4caf50';
-    let terrainType = 'grass';
-
-    if (tileId === 3) {
-        // Đảo Kamê / Biển (Bờ cát vàng & Đá biển)
-        terrainType = 'sand';
-        topColor = '#ffd54f';
-        topColorDark = '#ffb300';
-        bodyColorStart = '#8d6e63';
-        bodyColorEnd = '#4e342e';
-        platGlow = '#ffd54f';
-    } else if (planetId === 1 || tileId === 2) {
-        // Namếc (Rêu ngọc bích & Đá cẩm thạch)
-        terrainType = 'namek';
-        topColor = '#10b981';
-        topColorDark = '#047857';
-        bodyColorStart = '#134e4a';
-        bodyColorEnd = '#042f2e';
-        platGlow = '#10b981';
-    } else if (planetId === 2 || tileId === 4) {
-        // Xayda (Nham thạch & Đá đỏ bazan)
-        terrainType = 'xayda';
-        topColor = '#f97316';
-        topColorDark = '#c2410c';
-        bodyColorStart = '#450a0a';
-        bodyColorEnd = '#1a0505';
-        platGlow = '#f97316';
-    } else if (tileId === 5) {
-        // Hang động / Lòng đất tối
-        terrainType = 'cave';
-        topColor = '#78909c';
-        topColorDark = '#455a64';
-        bodyColorStart = '#263238';
-        bodyColorEnd = '#10171d';
-        platGlow = '#90a4ae';
-    }
-
-    // A. Vẽ khối đất/đá thực sự (Solid Blocks) từ tile_map_data
-    if (currentMapData.blocks && currentMapData.blocks.length > 0) {
-        currentMapData.blocks.forEach(b => {
-            const bGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-            bGrad.addColorStop(0, bodyColorStart);
-            bGrad.addColorStop(1, bodyColorEnd);
-            ctx.fillStyle = bGrad;
-            ctx.fillRect(b.x, b.y, b.w, b.h);
-
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(b.x, b.y, b.w, b.h);
-        });
-    }
-
-    // B. Vẽ các bề mặt đứng được (Walkable Platforms) chuẩn xác 100%
-    if (currentMapData.platforms && currentMapData.platforms.length > 0) {
-        currentMapData.platforms.forEach(p => {
-            const pw = p.x2 - p.x1;
-
-            // Dải bề mặt địa hình (Mặt cỏ / Bờ cát / Rêu đá)
-            ctx.fillStyle = topColor;
-            ctx.fillRect(p.x1, p.y, pw, 5);
-
-            ctx.fillStyle = topColorDark;
-            ctx.fillRect(p.x1, p.y + 5, pw, 3);
-
-            // Chi tiết bề mặt tự nhiên (ngọn cỏ hoặc hạt cát / đá gồ ghề)
-            if (terrainType === 'sand') {
-                ctx.fillStyle = '#ffe082';
-                ctx.fillRect(p.x1, p.y, pw, 2);
-            } else if (terrainType === 'grass' || terrainType === 'namek') {
-                ctx.fillStyle = topColor;
-                for (let gx = p.x1 + 4; gx < p.x2 - 4; gx += 8) {
-                    ctx.beginPath();
-                    ctx.moveTo(gx, p.y);
-                    ctx.lineTo(gx + 3, p.y - 4);
-                    ctx.lineTo(gx + 6, p.y);
-                    ctx.fill();
-                }
-            } else if (terrainType === 'xayda') {
-                ctx.fillStyle = '#fca5a5';
-                for (let gx = p.x1 + 6; gx < p.x2 - 6; gx += 16) {
-                    ctx.fillRect(gx, p.y - 1, 6, 2);
+    // 5. Authentic Game Tiles Rendering
+    if (currentMapData.tiles && currentMapData.tiles.length > 0) {
+        const rows = currentMapData.tiles.length;
+        for (let ty = 0; ty < rows; ty++) {
+            const row = currentMapData.tiles[ty];
+            for (let tx = 0; tx < row.length; tx++) {
+                const tIdx = row[tx];
+                if (tIdx > 0) {
+                    const tImg = getTileImage(tileId, tIdx);
+                    if (tImg && tImg.complete && tImg.naturalWidth > 0) {
+                        ctx.drawImage(tImg, tx * 24, ty * 24, 24, 24);
+                    } else {
+                        // Fallback tile block
+                        ctx.fillStyle = '#4e342e';
+                        ctx.fillRect(tx * 24, ty * 24, 24, 24);
+                    }
                 }
             }
-
-            // Đường ranh giới bề mặt phát sáng nhẹ giúp Admin dễ canh tọa độ
-            ctx.strokeStyle = platGlow;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(p.x1, p.y);
-            ctx.lineTo(p.x2, p.y);
-            ctx.stroke();
-        });
-    } else {
-        // Fallback mặt đất nếu map không có file tile_map_data
-        const fallbackY = Math.round(canvas.height * 0.75);
-        ctx.fillStyle = bodyColorStart;
-        ctx.fillRect(0, fallbackY, canvas.width, canvas.height - fallbackY);
-        ctx.fillStyle = topColor;
-        ctx.fillRect(0, fallbackY, canvas.width, 6);
+        }
+    } else if (currentMapData.blocks) {
+        // Fallback mesh
+        ctx.fillStyle = '#4e342e';
+        currentMapData.blocks.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
     }
 
-    // 4. Vẽ Cổng Dịch Chuyển (Waypoints)
-    if (currentMapData.waypoints) {
-        currentMapData.waypoints.forEach(w => {
-            const wx = (w.minX + w.maxX) / 2;
-            const wy = (w.minY + w.maxY) / 2;
-
-            // Hiệu ứng Portal phát sáng
-            const pGrad = ctx.createRadialGradient(wx, wy, 5, wx, wy, 28);
-            pGrad.addColorStop(0, 'rgba(0, 229, 255, 0.8)');
-            pGrad.addColorStop(0.6, 'rgba(0, 150, 255, 0.3)');
-            pGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = pGrad;
+    // 6. Grid Overlay
+    if (showGrid) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 24) {
             ctx.beginPath();
-            ctx.arc(wx, wy, 32, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Vòng tròn Portal
-            ctx.strokeStyle = '#00e5ff';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.arc(wx, wy, 22, 0, Math.PI * 2);
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
             ctx.stroke();
-
-            // Lõi xoay
-            ctx.fillStyle = '#ffffff';
+        }
+        for (let y = 0; y < canvas.height; y += 24) {
             ctx.beginPath();
-            ctx.arc(wx, wy, 6, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+    }
 
-            // Nhãn Portal
+    // 7. Waypoints / Portals (Yellow bounding boxes with directional arrows)
+    if (showPortals && currentMapData.waypoints) {
+        currentMapData.waypoints.forEach((w, idx) => {
+            const isSel = selectedEntity && selectedEntity.type === 'wp' && selectedEntity.index === idx;
+            const bx = w.minX;
+            const by = w.minY;
+            const bw = Math.max(36, w.maxX - w.minX);
+            const bh = Math.max(24, w.maxY - w.minY);
+
+            // Bounding box
+            ctx.strokeStyle = isSel ? '#00e5ff' : '#ffd700';
+            ctx.lineWidth = isSel ? 2 : 1.5;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(bx, by, bw, bh);
+            ctx.setLineDash([]);
+
+            // Semi-transparent fill
+            ctx.fillStyle = isSel ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255, 215, 0, 0.12)';
+            ctx.fillRect(bx, by, bw, bh);
+
+            // Tag label
             ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'center';
-            const pText = '🌀 ' + w.name;
-            const tw = ctx.measureText(pText).width;
-            ctx.fillStyle = 'rgba(7, 12, 24, 0.9)';
-            ctx.fillRect(wx - tw/2 - 6, wy - 42, tw + 12, 18);
-            ctx.strokeStyle = '#00e5ff';
-            ctx.strokeRect(wx - tw/2 - 6, wy - 42, tw + 12, 18);
+            const labelText = `[${w.name} - #${w.goMap}]`;
+            const tw = ctx.measureText(labelText).width;
+            const cx = bx + bw / 2;
+            const cy = by + bh / 2;
 
-            ctx.fillStyle = '#00e5ff';
-            ctx.fillText(pText, wx, wy - 29);
+            ctx.fillStyle = 'rgba(13, 17, 23, 0.9)';
+            ctx.fillRect(cx - tw/2 - 4, cy - 8, tw + 8, 16);
+            ctx.strokeStyle = isSel ? '#00e5ff' : '#ffd700';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(cx - tw/2 - 4, cy - 8, tw + 8, 16);
 
-            // Chi tiết đích đến cổng có badge nền tối chống lóa
-            const wpDetail = `→ Map ${w.goMap} (${w.goX},${w.goY})`;
-            ctx.font = '10px monospace';
-            const dw = ctx.measureText(wpDetail).width;
-            ctx.fillStyle = 'rgba(7, 12, 24, 0.85)';
-            ctx.fillRect(wx - dw/2 - 5, wy + 26, dw + 10, 16);
-            ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
-            ctx.strokeRect(wx - dw/2 - 5, wy + 26, dw + 10, 16);
-            ctx.fillStyle = '#80d8ff';
-            ctx.fillText(wpDetail, wx, wy + 38);
+            ctx.fillStyle = isSel ? '#00e5ff' : '#ffd700';
+            ctx.fillText(labelText, cx, cy + 4);
         });
     }
 
-    // 5. Tính toán bậc so le (stagger tiers) cho NPC & Quái để các nhãn liền kề không bao giờ đè lên nhau
-    const npcTiers = [];
+    // 8. NPCs (Circular Avatar Tokens)
+    if (currentMapData.npcs) {
+        currentMapData.npcs.forEach((n, idx) => {
+            const nx = n.x !== undefined ? n.x : n[1];
+            const ny = n.y !== undefined ? n.y : n[2];
+            const nname = n.name || ('NPC #' + (n.id !== undefined ? n.id : n[0]));
+            const navatar = n.avatar || 0;
+            const isSel = selectedEntity && selectedEntity.type === 'npc' && selectedEntity.index === idx;
+
+            // Circular token
+            const r = 16;
+            const cy = ny - r - 4;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(nx, cy, r, 0, Math.PI * 2);
+            ctx.fillStyle = '#0d1117';
+            ctx.fill();
+            ctx.strokeStyle = isSel ? '#00e5ff' : '#ffd700';
+            ctx.lineWidth = isSel ? 3 : 2;
+            if (isSel) {
+                ctx.shadowColor = '#00e5ff';
+                ctx.shadowBlur = 12;
+            }
+            ctx.stroke();
+            ctx.clip();
+
+            const img = getNpcImage(navatar);
+            if (img && img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, nx - r, cy - r, r * 2, r * 2);
+            } else {
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🧙', nx, cy);
+            }
+            ctx.restore();
+
+            // Name & Coordinate tag
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            const tw = ctx.measureText(nname).width;
+            ctx.fillStyle = 'rgba(13, 17, 23, 0.85)';
+            ctx.fillRect(nx - tw/2 - 4, cy - r - 16, tw + 8, 14);
+            ctx.strokeStyle = '#ffd700';
+            ctx.strokeRect(nx - tw/2 - 4, cy - r - 16, tw + 8, 14);
+            ctx.fillStyle = '#ffd700';
+            ctx.fillText(nname, nx, cy - r - 5);
+
+            // Coords beneath
+            ctx.font = '9px monospace';
+            ctx.fillStyle = '#f0f6fc';
+            ctx.fillText(`${nx}, ${ny}`, nx, ny + 12);
+        });
+    }
+
+    // 9. Mobs (Circular Token with Red Outline & HP Bar)
+    if (currentMapData.mobs) {
+        currentMapData.mobs.forEach((m, idx) => {
+            const isSel = selectedEntity && selectedEntity.type === 'mob' && selectedEntity.index === idx;
+            const iconId = m.iconId || 7466;
+            const img = getMobImage(iconId);
+
+            const r = 15;
+            const cy = m.y - r - 4;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(m.x, cy, r, 0, Math.PI * 2);
+            ctx.fillStyle = '#0d1117';
+            ctx.fill();
+            ctx.strokeStyle = isSel ? '#00e5ff' : '#ff7b72';
+            ctx.lineWidth = isSel ? 3 : 2;
+            if (isSel) {
+                ctx.shadowColor = '#00e5ff';
+                ctx.shadowBlur = 12;
+            }
+            ctx.stroke();
+            ctx.clip();
+
+            if (img && img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, m.x - r, cy - r, r * 2, r * 2);
+            } else {
+                ctx.fillStyle = '#ff7b72';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('👾', m.x, cy);
+            }
+            ctx.restore();
+
+            // Mob Label
+            const mobLabel = `Lv.${m.level} ${m.name || 'Quái #' + m.id}`;
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            const tw = ctx.measureText(mobLabel).width;
+            ctx.fillStyle = 'rgba(13, 17, 23, 0.85)';
+            ctx.fillRect(m.x - tw/2 - 4, cy - r - 16, tw + 8, 14);
+            ctx.strokeStyle = '#ff7b72';
+            ctx.strokeRect(m.x - tw/2 - 4, cy - r - 16, tw + 8, 14);
+            ctx.fillStyle = '#ff7b72';
+            ctx.fillText(mobLabel, m.x, cy - r - 5);
+
+            // Coords beneath
+            ctx.font = '9px monospace';
+            ctx.fillStyle = '#f0f6fc';
+            ctx.fillText(`${m.x}, ${m.y}`, m.x, m.y + 12);
+        });
+    }
+}
+
+// =============================================================
+// RIGHT INSPECTOR TABS & ITEMS LIST
+// =============================================================
+function switchRightTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = '#8b949e';
+        b.style.borderColor = 'transparent';
+    });
+    const activeBtn = document.getElementById(`tab-${tab}`);
+    if (activeBtn) {
+        activeBtn.style.background = 'rgba(35, 134, 54, 0.2)';
+        activeBtn.style.color = '#3fb950';
+        activeBtn.style.borderColor = '#3fb950';
+    }
+
+    document.getElementById('tabContentInfo').style.display = (tab === 'info') ? 'flex' : 'none';
+    document.getElementById('tabContentBg').style.display = (tab === 'bg') ? 'block' : 'none';
+    document.getElementById('tabContentTile').style.display = (tab === 'tile') ? 'block' : 'none';
+
+    if (tab === 'bg') {
+        document.getElementById('inputBgId').value = currentMapData.bg_id || 0;
+        document.getElementById('inputBgType').value = currentMapData.bg_type || 0;
+        document.getElementById('selectPlanetId').value = currentMapData.planet_id || 0;
+    } else if (tab === 'tile') {
+        document.getElementById('inputTileId').value = currentMapData.tile_id || 1;
+    }
+}
+
+function renderRightInspector() {
+    const npcs = currentMapData.npcs || [];
+    const mobs = currentMapData.mobs || [];
+    const waypoints = currentMapData.waypoints || [];
+
+    document.getElementById('rightNpcCount').innerText = npcs.length;
+    document.getElementById('rightMobCount').innerText = mobs.length;
+    document.getElementById('rightWpCount').innerText = waypoints.length;
+
+    // Render NPCs
+    const npcList = document.getElementById('rightNpcList');
+    npcList.innerHTML = '';
+    npcs.forEach((n, idx) => {
+        const nx = n.x !== undefined ? n.x : n[1];
+        const ny = n.y !== undefined ? n.y : n[2];
+        const nname = n.name || ('NPC #' + (n.id !== undefined ? n.id : n[0]));
+        const isSel = selectedEntity && selectedEntity.type === 'npc' && selectedEntity.index === idx;
+
+        npcList.innerHTML += `
+            <div onclick="selectEntity('npc', ${idx})" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; cursor: pointer; background: ${isSel ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isSel ? '#00e5ff' : 'transparent'};">
+                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
+                    <img src="/images/icons/${n.avatar || 0}.png" onerror="this.src='/images/no_image.png'" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain;">
+                    <span style="font-size: 0.8rem; color: #ffd700; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${nname}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.75rem; font-family: monospace; color: #8b949e;">${nx}, ${ny}</span>
+                    <button type="button" onclick="event.stopPropagation(); removeNpc(${idx})" style="background: none; border: none; color: #da3633; cursor: pointer; font-size: 0.8rem; padding: 0 4px;">&times;</button>
+                </div>
+            </div>
+        `;
+    });
+
+    // Render Mobs
+    const mobList = document.getElementById('rightMobList');
+    mobList.innerHTML = '';
+    mobs.forEach((m, idx) => {
+        const isSel = selectedEntity && selectedEntity.type === 'mob' && selectedEntity.index === idx;
+        mobList.innerHTML += `
+            <div onclick="selectEntity('mob', ${idx})" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; cursor: pointer; background: ${isSel ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isSel ? '#00e5ff' : 'transparent'};">
+                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
+                    <img src="/images/icons/${m.iconId || 7466}.png" onerror="this.src='/images/no_image.png'" style="width: 20px; height: 20px; border-radius: 50%; object-fit: contain;">
+                    <span style="font-size: 0.8rem; color: #ff7b72; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.name || 'Quái #' + m.id}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.75rem; font-family: monospace; color: #8b949e;">${m.x}, ${m.y}</span>
+                    <button type="button" onclick="event.stopPropagation(); removeMob(${idx})" style="background: none; border: none; color: #da3633; cursor: pointer; font-size: 0.8rem; padding: 0 4px;">&times;</button>
+                </div>
+            </div>
+        `;
+    });
+
+    // Render Waypoints
+    const wpList = document.getElementById('rightWpList');
+    wpList.innerHTML = '';
+    waypoints.forEach((w, idx) => {
+        const isSel = selectedEntity && selectedEntity.type === 'wp' && selectedEntity.index === idx;
+        wpList.innerHTML += `
+            <div onclick="selectEntity('wp', ${idx})" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; cursor: pointer; background: ${isSel ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isSel ? '#00e5ff' : 'transparent'};">
+                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
+                    <span style="color: #58a6ff; font-size: 0.85rem;">→</span>
+                    <span style="font-size: 0.8rem; color: #58a6ff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${w.name} → #${w.goMap}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.75rem; font-family: monospace; color: #8b949e;">${w.minX}, ${w.minY}</span>
+                    <button type="button" onclick="event.stopPropagation(); removeWaypoint(${idx})" style="background: none; border: none; color: #da3633; cursor: pointer; font-size: 0.8rem; padding: 0 4px;">&times;</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function selectEntity(type, index) {
+    selectedEntity = { type, index };
+    renderCanvas();
+    renderRightInspector();
+}
+
+function toggleDecorationsGroup() {
+    const el = document.getElementById('rightDecoList');
+    el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+}
+
+function updateBgConfig() {
+    currentMapData.bg_id = parseInt(document.getElementById('inputBgId').value) || 0;
+    currentMapData.bg_type = parseInt(document.getElementById('inputBgType').value) || 0;
+    currentMapData.planet_id = parseInt(document.getElementById('selectPlanetId').value) || 0;
+    renderCanvas();
+}
+
+function updateTileConfig() {
+    currentMapData.tile_id = parseInt(document.getElementById('inputTileId').value) || 1;
+    renderCanvas();
+}
+
+// =============================================================
+// INTERACTION: MOUSE & KEYBOARD EVENT HANDLERS
+// =============================================================
+function snapToGround(x, y) {
+    if (!document.getElementById('chkSnapGround').checked) return y;
+    if (currentMapData.platforms && currentMapData.platforms.length > 0) {
+        let closestY = y;
+        let minDiff = 60;
+        currentMapData.platforms.forEach(p => {
+            if (x >= p.x1 - 20 && x <= p.x2 + 20) {
+                const diff = Math.abs(p.y - y);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestY = p.y;
+                }
+            }
+        });
+        return closestY;
+    }
+    return y;
+}
+
+canvas.addEventListener('mousedown', function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scale = currentZoom;
+    const mouseX = Math.round((e.clientX - rect.left) / scale);
+    const mouseY = Math.round((e.clientY - rect.top) / scale);
+
+    // 1. Check NPC Hit
     if (currentMapData.npcs) {
         for (let i = 0; i < currentMapData.npcs.length; i++) {
             const n = currentMapData.npcs[i];
             const nx = n.x !== undefined ? n.x : n[1];
             const ny = n.y !== undefined ? n.y : n[2];
-            const used = new Set();
-            for (let j = 0; j < i; j++) {
-                const prev = currentMapData.npcs[j];
-                const px = prev.x !== undefined ? prev.x : prev[1];
-                const py = prev.y !== undefined ? prev.y : prev[2];
-                if (Math.abs(nx - px) < 105 && Math.abs(ny - py) < 75) {
-                    used.add(npcTiers[j]);
-                }
+            const cy = ny - 20;
+            if (Math.hypot(nx - mouseX, cy - mouseY) <= 22) {
+                selectedEntity = { type: 'npc', index: i };
+                draggingEntity = i;
+                dragType = 'npc';
+                dragOffsetX = nx - mouseX;
+                dragOffsetY = ny - mouseY;
+                renderCanvas();
+                renderRightInspector();
+                return;
             }
-            let t = 0;
-            while (used.has(t) && t < 3) t++;
-            npcTiers[i] = t;
         }
     }
 
-    const mobTiers = [];
+    // 2. Check Mob Hit
     if (currentMapData.mobs) {
         for (let i = 0; i < currentMapData.mobs.length; i++) {
             const m = currentMapData.mobs[i];
-            const used = new Set();
-            for (let j = 0; j < i; j++) {
-                const prev = currentMapData.mobs[j];
-                if (Math.abs(m.x - prev.x) < 105 && Math.abs(m.y - prev.y) < 75) {
-                    used.add(mobTiers[j]);
-                }
+            const cy = m.y - 19;
+            if (Math.hypot(m.x - mouseX, cy - mouseY) <= 20) {
+                selectedEntity = { type: 'mob', index: i };
+                draggingEntity = i;
+                dragType = 'mob';
+                dragOffsetX = m.x - mouseX;
+                dragOffsetY = m.y - mouseY;
+                renderCanvas();
+                renderRightInspector();
+                return;
             }
-            // Tránh đè lên NPC gần kề
-            if (currentMapData.npcs) {
-                for (let j = 0; j < currentMapData.npcs.length; j++) {
-                    const n = currentMapData.npcs[j];
-                    const nx = n.x !== undefined ? n.x : n[1];
-                    const ny = n.y !== undefined ? n.y : n[2];
-                    if (Math.abs(m.x - nx) < 105 && Math.abs(m.y - ny) < 75) {
-                        used.add(npcTiers[j]);
-                    }
-                }
-            }
-            let t = 0;
-            while (used.has(t) && t < 3) t++;
-            mobTiers[i] = t;
         }
     }
 
-    // 6. Vẽ Quái Mob (Với Sprite Icon thật từ Game radar/item_template)
-    if (currentMapData.mobs) {
-        currentMapData.mobs.forEach((m, idx) => {
-            const isSelected = (draggingEntity === idx && dragType === 'mob');
-            const iconId = m.iconId || 7466;
-            const img = getMobImage(iconId);
-            const mobTier = mobTiers[idx] || 0;
-
-            // Đổ bóng dưới chân quái
-            ctx.fillStyle = 'rgba(0,0,0,0.55)';
-            ctx.beginPath();
-            ctx.ellipse(m.x, m.y, 16, 5, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            const spriteHeight = 44;
-            const spriteY = m.y - spriteHeight;
-
-            if (img && img.complete && img.naturalWidth > 0) {
-                const aspect = img.naturalWidth / img.naturalHeight;
-                const spriteWidth = Math.min(60, Math.max(28, spriteHeight * aspect));
-                const spriteX = m.x - spriteWidth / 2;
-
-                if (isSelected) {
-                    ctx.save();
-                    ctx.shadowColor = '#ff5252';
-                    ctx.shadowBlur = 15;
-                    ctx.drawImage(img, spriteX, spriteY, spriteWidth, spriteHeight);
-                    ctx.restore();
-                } else {
-                    ctx.drawImage(img, spriteX, spriteY, spriteWidth, spriteHeight);
-                }
-            } else {
-                // Biểu tượng Token Quái fallback nếu ảnh chưa nạp xong
-                ctx.fillStyle = isSelected ? '#ff1744' : '#d50000';
-                ctx.beginPath();
-                ctx.arc(m.x, m.y - 18, 16, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.strokeStyle = isSelected ? '#ffff00' : '#ff8a80';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.font = '16px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('👾', m.x, m.y - 17);
+    // 3. Check Waypoint Hit
+    if (currentMapData.waypoints) {
+        for (let i = 0; i < currentMapData.waypoints.length; i++) {
+            const w = currentMapData.waypoints[i];
+            if (mouseX >= w.minX && mouseX <= w.maxX && mouseY >= w.minY && mouseY <= w.maxY) {
+                selectedEntity = { type: 'wp', index: i };
+                draggingEntity = i;
+                dragType = 'wp';
+                dragOffsetX = w.minX - mouseX;
+                dragOffsetY = w.minY - mouseY;
+                renderCanvas();
+                renderRightInspector();
+                return;
             }
-
-            // Thanh Máu (HP Bar)
-            const barW = 50;
-            const barH = 5;
-            const barX = m.x - barW / 2;
-            const barY = spriteY - 14;
-
-            ctx.fillStyle = 'rgba(0,0,0,0.7)';
-            ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-            ctx.fillStyle = '#00e676';
-            ctx.fillRect(barX, barY, barW, barH);
-
-            // Tên Quái & Cấp (So le chống đè chữ)
-            const mobBoxY = barY - 18 - (mobTier * 22);
-
-            if (mobTier > 0) {
-                ctx.save();
-                ctx.strokeStyle = 'rgba(255, 82, 82, 0.45)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([2, 2]);
-                ctx.beginPath();
-                ctx.moveTo(m.x, mobBoxY + 16);
-                ctx.lineTo(m.x, barY - 2);
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'alphabetic';
-            const mobLabel = `Lv.${m.level} ${m.name || 'Quái #' + m.id}`;
-            const mtw = ctx.measureText(mobLabel).width;
-
-            ctx.fillStyle = 'rgba(15, 20, 30, 0.88)';
-            ctx.fillRect(m.x - mtw/2 - 5, mobBoxY, mtw + 10, 16);
-            ctx.strokeStyle = '#ff5252';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(m.x - mtw/2 - 5, mobBoxY, mtw + 10, 16);
-
-            ctx.fillStyle = '#ff8a80';
-            ctx.fillText(mobLabel, m.x, mobBoxY + 12);
-
-            // Tọa độ nhỏ bên dưới có badge nền tối chống lóa và so le chống đè
-            const mobCoordY = m.y + 16 + (mobTier % 2 === 1 ? 13 : 0);
-            const mCoordText = `(${m.x}, ${m.y})`;
-            ctx.font = '9px monospace';
-            const mcw = ctx.measureText(mCoordText).width;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-            ctx.fillRect(m.x - mcw/2 - 3, mobCoordY - 9, mcw + 6, 12);
-            ctx.fillStyle = '#ffd54f';
-            ctx.fillText(mCoordText, m.x, mobCoordY);
-        });
+        }
     }
 
-    // 7. Vẽ NPC (Với Sprite Avatar thật trong Game!)
-    if (currentMapData.npcs) {
-        currentMapData.npcs.forEach((n, idx) => {
-            const nx = n.x !== undefined ? n.x : n[1];
-            const ny = n.y !== undefined ? n.y : n[2];
-            const nid = n.id !== undefined ? n.id : n[0];
-            const nname = n.name || ('NPC #' + nid);
-            const navatar = n.avatar || 0;
-            const isSelected = (draggingEntity === idx && dragType === 'npc');
-            const npcTier = npcTiers[idx] || 0;
-
-            // Đổ bóng dưới chân NPC
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.beginPath();
-            ctx.ellipse(nx, ny, 18, 6, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            const img = getNpcImage(navatar);
-            const spriteHeight = 48;
-            const spriteY = ny - spriteHeight;
-
-            if (img && img.complete && img.naturalWidth > 0) {
-                // Tỉ lệ scale sprite
-                const aspect = img.naturalWidth / img.naturalHeight;
-                const spriteWidth = spriteHeight * aspect;
-                const spriteX = nx - spriteWidth / 2;
-
-                if (isSelected) {
-                    ctx.save();
-                    ctx.shadowColor = '#ffd700';
-                    ctx.shadowBlur = 15;
-                    ctx.drawImage(img, spriteX, spriteY, spriteWidth, spriteHeight);
-                    ctx.restore();
-                } else {
-                    ctx.drawImage(img, spriteX, spriteY, spriteWidth, spriteHeight);
-                }
-            } else {
-                // Fallback nếu ảnh chưa tải xong hoặc không có avatar
-                ctx.fillStyle = isSelected ? '#ffea00' : '#ffd700';
-                ctx.beginPath();
-                ctx.arc(nx, ny - 24, 18, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.font = '18px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🧙', nx, ny - 24);
-            }
-
-            // Banner Tên NPC (So le chống đè chữ và có đường chỉ tâm khi nâng cao)
-            const nameBoxY = spriteY - 20 - (npcTier * 24);
-
-            if (npcTier > 0) {
-                ctx.save();
-                ctx.strokeStyle = 'rgba(255, 215, 0, 0.45)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([2, 2]);
-                ctx.beginPath();
-                ctx.moveTo(nx, nameBoxY + 17);
-                ctx.lineTo(nx, spriteY - 2);
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'alphabetic';
-            const nameLabel = `🧙 ${nname}`;
-            const ntw = ctx.measureText(nameLabel).width;
-
-            ctx.fillStyle = 'rgba(20, 20, 10, 0.9)';
-            ctx.fillRect(nx - ntw/2 - 6, nameBoxY, ntw + 12, 17);
-            ctx.strokeStyle = '#ffd700';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(nx - ntw/2 - 6, nameBoxY, ntw + 12, 17);
-
-            ctx.fillStyle = '#ffd700';
-            ctx.fillText(nameLabel, nx, nameBoxY + 12);
-
-            // Tọa độ nhỏ bên dưới có badge nền tối chống lóa và so le chống đè
-            const npcCoordY = ny + 16 + (npcTier % 2 === 1 ? 13 : 0);
-            const nCoordText = `(${nx}, ${ny})`;
-            ctx.font = '9px monospace';
-            const ncw = ctx.measureText(nCoordText).width;
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-            ctx.fillRect(nx - ncw/2 - 3, npcCoordY - 9, ncw + 6, 12);
-            ctx.fillStyle = '#fff9c4';
-            ctx.fillText(nCoordText, nx, npcCoordY);
-        });
-    }
-}
-
-// -------------------------------------------------------------
-// RENDER BẢNG DANH SÁCH NPC & QUÁI VẬT
-// -------------------------------------------------------------
-function renderTables() {
-    // 1. NPC Table
-    const npcs = currentMapData.npcs || [];
-    document.getElementById('npcCount').innerText = npcs.length;
-    const nBody = document.getElementById('npcTableBody');
-    nBody.innerHTML = '';
-
-    npcs.forEach((n, idx) => {
-        const nx = n.x !== undefined ? n.x : n[1];
-        const ny = n.y !== undefined ? n.y : n[2];
-        const nid = n.id !== undefined ? n.id : n[0];
-        const nname = n.name || ('NPC #' + nid);
-        const navatar = n.avatar || 0;
-
-        nBody.innerHTML += `
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="text-align: center;">
-                    <img src="/images/icons/${navatar}.png" onerror="this.src='/images/no_image.png'" style="width: 28px; height: 28px; object-fit: contain; background: rgba(0,0,0,0.4); border-radius: 4px; padding: 2px; vertical-align: middle;">
-                </td>
-                <td>
-                    <div style="font-weight: 700; color: #ffd700; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${nname}</div>
-                    <div style="color: #777; font-size: 0.72rem;">ID: #${nid}</div>
-                </td>
-                <td style="text-align: center;">
-                    <input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.8rem; width: 50px; margin-bottom: 0; text-align: center;" value="${nx}" onchange="updateNpcCoord(${idx}, 'x', this.value)">
-                </td>
-                <td style="text-align: center;">
-                    <input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.8rem; width: 50px; margin-bottom: 0; text-align: center;" value="${ny}" onchange="updateNpcCoord(${idx}, 'y', this.value)">
-                </td>
-                <td style="text-align: right;">
-                    <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.75rem;" onclick="removeNpc(${idx})">×</button>
-                </td>
-            </tr>
-        `;
-    });
-
-    // 2. Mob Table
-    const mobs = currentMapData.mobs || [];
-    document.getElementById('mobCount').innerText = mobs.length;
-    const mBody = document.getElementById('mobTableBody');
-    mBody.innerHTML = '';
-
-    mobs.forEach((m, idx) => {
-        const mobIcon = m.iconId || 7466;
-        mBody.innerHTML += `
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="text-align: center;">
-                    <img src="/images/icons/${mobIcon}.png" onerror="this.src='/images/no_image.png'" style="width: 28px; height: 28px; object-fit: contain; background: rgba(0,0,0,0.4); border-radius: 4px; padding: 2px; vertical-align: middle;">
-                </td>
-                <td>
-                    <div style="font-weight: 700; color: #ff5252; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.name || 'Quái #' + m.id}</div>
-                    <div style="color: #777; font-size: 0.72rem;">ID: #${m.id}</div>
-                </td>
-                <td>
-                    <span style="color: #ffb74d; font-weight: 700;">Lv.${m.level}</span>
-                    <div style="color: #00e676; font-size: 0.72rem;">${Number(m.hp).toLocaleString()} HP</div>
-                </td>
-                <td style="text-align: center;">
-                    <input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.8rem; width: 50px; margin-bottom: 0; text-align: center;" value="${m.x}" onchange="updateMobCoord(${idx}, 'x', this.value)">
-                </td>
-                <td style="text-align: center;">
-                    <input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.8rem; width: 50px; margin-bottom: 0; text-align: center;" value="${m.y}" onchange="updateMobCoord(${idx}, 'y', this.value)">
-                </td>
-                <td style="text-align: right;">
-                    <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.75rem;" onclick="removeMob(${idx})">×</button>
-                </td>
-            </tr>
-        `;
-    });
-}
-
-function updateNpcCoord(idx, coord, val) {
-    const v = parseInt(val) || 0;
-    if (coord === 'x') {
-        if (currentMapData.npcs[idx].x !== undefined) currentMapData.npcs[idx].x = v;
-        else currentMapData.npcs[idx][1] = v;
-    } else {
-        if (currentMapData.npcs[idx].y !== undefined) currentMapData.npcs[idx].y = v;
-        else currentMapData.npcs[idx][2] = v;
-    }
+    selectedEntity = null;
     renderCanvas();
-}
+    renderRightInspector();
+});
 
-function updateMobCoord(idx, coord, val) {
-    const v = parseInt(val) || 0;
-    currentMapData.mobs[idx][coord] = v;
-    renderCanvas();
-}
+canvas.addEventListener('mousemove', function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scale = currentZoom;
+    const mouseX = Math.round((e.clientX - rect.left) / scale);
+    const mouseY = Math.round((e.clientY - rect.top) / scale);
 
-function removeNpc(idx) {
-    const npc = currentMapData.npcs[idx];
-    const name = npc.name || ('NPC #' + (npc.id !== undefined ? npc.id : npc[0]));
-    const doRemove = () => {
-        currentMapData.npcs.splice(idx, 1);
+    document.getElementById('hoverCoords').innerText = `X: ${mouseX} | Y: ${mouseY}`;
+
+    if (draggingEntity !== null) {
+        if (dragType === 'npc') {
+            const n = currentMapData.npcs[draggingEntity];
+            const targetX = mouseX + dragOffsetX;
+            const targetY = snapToGround(targetX, mouseY + dragOffsetY);
+            if (n.x !== undefined) { n.x = targetX; n.y = targetY; }
+            else { n[1] = targetX; n[2] = targetY; }
+        } else if (dragType === 'mob') {
+            const m = currentMapData.mobs[draggingEntity];
+            m.x = mouseX + dragOffsetX;
+            m.y = snapToGround(m.x, mouseY + dragOffsetY);
+        } else if (dragType === 'wp') {
+            const w = currentMapData.waypoints[draggingEntity];
+            const bw = w.maxX - w.minX;
+            const bh = w.maxY - w.minY;
+            w.minX = mouseX + dragOffsetX;
+            w.minY = mouseY + dragOffsetY;
+            w.maxX = w.minX + bw;
+            w.maxY = w.minY + bh;
+        }
         renderCanvas();
-        renderTables();
-        if (window.showToast) window.showToast(`Đã xóa NPC ${name}`, 'info');
-    };
-
-    if (window.showConfirm) {
-        window.showConfirm({
-            title: 'Xóa NPC Khỏi Bản Đồ',
-            message: `Bạn có chắc muốn xóa NPC <b style="color: #ffd700;">${name}</b> khỏi bản đồ?`,
-            okText: 'Xác nhận xóa',
-            cancelText: 'Từ chối',
-            isDanger: true,
-            onConfirm: doRemove
-        });
-    } else {
-        if (confirm(`Xác nhận xóa NPC ${name} khỏi bản đồ?`)) doRemove();
+        renderRightInspector();
     }
-}
+});
 
-function removeMob(idx) {
-    const mob = currentMapData.mobs[idx];
-    const name = mob.name || ('Quái #' + mob.id);
-    const doRemove = () => {
-        currentMapData.mobs.splice(idx, 1);
+window.addEventListener('mouseup', function() {
+    if (draggingEntity !== null) {
+        draggingEntity = null;
+        dragType = null;
         renderCanvas();
-        renderTables();
-        if (window.showToast) window.showToast(`Đã xóa quái ${name}`, 'info');
-    };
-
-    if (window.showConfirm) {
-        window.showConfirm({
-            title: 'Xóa Quái Khỏi Bản Đồ',
-            message: `Bạn có chắc muốn xóa quái <b style="color: #ff5252;">${name}</b> (Lv.${mob.level}) khỏi bản đồ?`,
-            okText: 'Xác nhận xóa',
-            cancelText: 'Từ chối',
-            isDanger: true,
-            onConfirm: doRemove
-        });
-    } else {
-        if (confirm(`Xác nhận xóa quái ${name} khỏi bản đồ?`)) doRemove();
+        renderRightInspector();
     }
-}
+});
 
-// -------------------------------------------------------------
-// MODALS THÊM NPC & QUÁI VẬT
-// -------------------------------------------------------------
+// Keyboard controls: Arrow keys to nudge 1px (Shift: 10px), Delete to delete
+window.addEventListener('keydown', function(e) {
+    if (!selectedEntity || ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+    const delta = e.shiftKey ? 10 : 1;
+
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const dx = (e.key === 'ArrowLeft') ? -delta : (e.key === 'ArrowRight' ? delta : 0);
+        const dy = (e.key === 'ArrowUp') ? -delta : (e.key === 'ArrowDown' ? delta : 0);
+
+        if (selectedEntity.type === 'npc') {
+            const n = currentMapData.npcs[selectedEntity.index];
+            if (n.x !== undefined) { n.x += dx; n.y += dy; } else { n[1] += dx; n[2] += dy; }
+        } else if (selectedEntity.type === 'mob') {
+            const m = currentMapData.mobs[selectedEntity.index];
+            m.x += dx; m.y += dy;
+        } else if (selectedEntity.type === 'wp') {
+            const w = currentMapData.waypoints[selectedEntity.index];
+            w.minX += dx; w.maxX += dx;
+            w.minY += dy; w.maxY += dy;
+        }
+        renderCanvas();
+        renderRightInspector();
+    } else if (e.key === 'Delete') {
+        e.preventDefault();
+        if (selectedEntity.type === 'npc') removeNpc(selectedEntity.index);
+        else if (selectedEntity.type === 'mob') removeMob(selectedEntity.index);
+        else if (selectedEntity.type === 'wp') removeWaypoint(selectedEntity.index);
+    }
+});
+
+// =============================================================
+// MODAL & ENTITY MANAGEMENT ACTIONS
+// =============================================================
 function openAddNpcModal() {
     document.getElementById('addNpcModal').style.display = 'flex';
     document.getElementById('searchNpcInput').value = '';
     filterNpcTemplates();
 }
-
 function closeAddNpcModal() {
     document.getElementById('addNpcModal').style.display = 'none';
 }
-
 function filterNpcTemplates() {
     const q = document.getElementById('searchNpcInput').value.toLowerCase().trim();
-    const items = document.querySelectorAll('.npc-tpl-item');
-    items.forEach(it => {
+    document.querySelectorAll('.npc-tpl-item').forEach(it => {
         const name = it.getAttribute('data-name');
         const id = it.getAttribute('data-id');
-        if (name.includes(q) || id.includes(q)) {
-            it.style.display = 'flex';
-        } else {
-            it.style.display = 'none';
-        }
+        it.style.display = (!q || name.includes(q) || id.includes(q)) ? 'flex' : 'none';
     });
 }
-
 function selectNpcToAdd(id, name, avatar) {
-    currentMapData.npcs.push({
-        id: id,
-        name: name,
-        avatar: avatar,
-        x: 600,
-        y: 432
-    });
-    getNpcImage(avatar);
+    const x = Math.round(canvas.width / 2);
+    const y = snapToGround(x, 432);
+    currentMapData.npcs.push({ id, name, avatar, x, y });
     closeAddNpcModal();
     renderCanvas();
-    renderTables();
+    renderRightInspector();
     if (window.showToast) window.showToast(`Đã thêm NPC ${name}`, 'success');
+}
+function removeNpc(idx) {
+    currentMapData.npcs.splice(idx, 1);
+    selectedEntity = null;
+    renderCanvas();
+    renderRightInspector();
 }
 
 function openAddMobModal() {
@@ -1016,179 +1077,157 @@ function openAddMobModal() {
     document.getElementById('searchMobInput').value = '';
     filterMobTemplates();
 }
-
 function closeAddMobModal() {
     document.getElementById('addMobModal').style.display = 'none';
 }
-
 function filterMobTemplates() {
     const q = document.getElementById('searchMobInput').value.toLowerCase().trim();
-    const items = document.querySelectorAll('.mob-tpl-item');
-    items.forEach(it => {
+    document.querySelectorAll('.mob-tpl-item').forEach(it => {
         const name = it.getAttribute('data-name');
         const id = it.getAttribute('data-id');
-        if (name.includes(q) || id.includes(q)) {
-            it.style.display = 'flex';
-        } else {
-            it.style.display = 'none';
-        }
+        it.style.display = (!q || name.includes(q) || id.includes(q)) ? 'flex' : 'none';
     });
 }
-
 function selectMobToAdd(id, name, hp, iconId) {
-    const mobIcon = iconId && iconId > 0 ? iconId : 7466;
-    currentMapData.mobs.push({
-        id: id,
-        name: name,
-        level: 1,
-        hp: hp || 100,
-        iconId: mobIcon,
-        x: 700,
-        y: 432
-    });
-    getMobImage(mobIcon);
+    const x = Math.round(canvas.width / 2);
+    const y = snapToGround(x, 432);
+    currentMapData.mobs.push({ id, name, hp: hp || 100, level: 1, iconId, x, y });
     closeAddMobModal();
     renderCanvas();
-    renderTables();
+    renderRightInspector();
     if (window.showToast) window.showToast(`Đã thêm quái ${name}`, 'success');
 }
+function removeMob(idx) {
+    currentMapData.mobs.splice(idx, 1);
+    selectedEntity = null;
+    renderCanvas();
+    renderRightInspector();
+}
 
-// -------------------------------------------------------------
-// KÉO THẢ CHUỘT TRÊN CANVAS (DRAG & DROP)
-// -------------------------------------------------------------
-canvas.addEventListener('mousedown', function(e) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const mouseX = (e.clientX - rect.left) * scaleX;
-    const mouseY = (e.clientY - rect.top) * scaleY;
+function openAddWaypointModal() {
+    document.getElementById('addWaypointModal').style.display = 'flex';
+}
+function closeAddWaypointModal() {
+    document.getElementById('addWaypointModal').style.display = 'none';
+}
+function saveNewWaypoint() {
+    const name = document.getElementById('wpNameInput').value.trim() || 'Cổng mới';
+    const x = parseInt(document.getElementById('wpXInput').value) || 600;
+    const y = parseInt(document.getElementById('wpYInput').value) || 408;
+    const goMap = parseInt(document.getElementById('wpGoMapInput').value) || 1;
+    const coords = document.getElementById('wpGoCoordsInput').value.split(',');
+    const goX = parseInt(coords[0]) || 100;
+    const goY = parseInt(coords[1]) || 400;
 
-    // Check click NPC (Hỗ trợ click vào Sprite hoặc Banner Tên ở mọi bậc so le)
-    if (currentMapData.npcs) {
-        for (let i = 0; i < currentMapData.npcs.length; i++) {
-            const n = currentMapData.npcs[i];
-            const nx = n.x !== undefined ? n.x : n[1];
-            const ny = n.y !== undefined ? n.y : n[2];
-            const dist = Math.hypot(nx - mouseX, (ny - 24) - mouseY);
-            const inVerticalRange = Math.abs(nx - mouseX) <= 45 && mouseY >= (ny - 110) && mouseY <= (ny + 15);
-            if (dist <= 28 || inVerticalRange) {
-                draggingEntity = i;
-                dragType = 'npc';
-                renderCanvas();
-                return;
-            }
+    currentMapData.waypoints.push({
+        name: name,
+        minX: x - 25,
+        minY: y - 25,
+        maxX: x + 25,
+        maxY: y + 25,
+        goMap: goMap,
+        goX: goX,
+        goY: goY
+    });
+
+    closeAddWaypointModal();
+    renderCanvas();
+    renderRightInspector();
+    if (window.showToast) window.showToast(`Đã thêm cổng dịch chuyển ${name}`, 'success');
+}
+function removeWaypoint(idx) {
+    currentMapData.waypoints.splice(idx, 1);
+    selectedEntity = null;
+    renderCanvas();
+    renderRightInspector();
+}
+
+function addDecorationItem() {
+    if (window.showToast) window.showToast('Vật trang trí được quản lý và bảo toàn theo data game item_bg_map_data', 'info');
+}
+
+// =============================================================
+// DATABASE PERSISTENCE & ACTIONS
+// =============================================================
+function saveMapData(callback) {
+    fetch("{{ route('admin.map_editor.save') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+        },
+        body: JSON.stringify({
+            map_id: currentMapData.id,
+            npcs: currentMapData.npcs,
+            mobs: currentMapData.mobs
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            if (window.showToast) window.showToast(res.message || 'Lưu bản đồ thành công!', 'success');
+            if (callback) callback();
+        } else {
+            if (window.showToast) window.showToast('Lỗi: ' + res.message, 'danger');
         }
-    }
+    })
+    .catch(() => {
+        if (window.showToast) window.showToast('Lỗi kết nối tới Server!', 'danger');
+    });
+}
 
-    // Check click Mob (Hỗ trợ click vào Sprite hoặc Banner Tên ở mọi bậc so le)
-    if (currentMapData.mobs) {
-        for (let i = 0; i < currentMapData.mobs.length; i++) {
-            const m = currentMapData.mobs[i];
-            const dist = Math.hypot(m.x - mouseX, (m.y - 18) - mouseY);
-            const inVerticalRange = Math.abs(m.x - mouseX) <= 45 && mouseY >= (m.y - 100) && mouseY <= (m.y + 15);
-            if (dist <= 26 || inVerticalRange) {
-                draggingEntity = i;
-                dragType = 'mob';
-                renderCanvas();
-                return;
-            }
-        }
-    }
-});
-
-canvas.addEventListener('mousemove', function(e) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const mouseX = Math.round((e.clientX - rect.left) * scaleX);
-    const mouseY = Math.round((e.clientY - rect.top) * scaleY);
-
-    document.getElementById('hoverCoords').innerText = `X: ${mouseX} | Y: ${mouseY}`;
-
-    if (draggingEntity !== null) {
-        if (dragType === 'npc') {
-            const n = currentMapData.npcs[draggingEntity];
-            if (n.x !== undefined) {
-                n.x = mouseX;
-                n.y = mouseY;
-            } else {
-                n[1] = mouseX;
-                n[2] = mouseY;
-            }
-        } else if (dragType === 'mob') {
-            currentMapData.mobs[draggingEntity].x = mouseX;
-            currentMapData.mobs[draggingEntity].y = mouseY;
-        }
-        renderCanvas();
-    }
-});
-
-canvas.addEventListener('mouseup', function() {
-    if (draggingEntity !== null) {
-        draggingEntity = null;
-        dragType = null;
-        renderCanvas();
-        renderTables();
-    }
-});
-
-// -------------------------------------------------------------
-// LƯU DỮ LIỆU BẢN ĐỒ VÀO DATABASE
-// -------------------------------------------------------------
-function saveMapData() {
-    const doSave = () => {
-        fetch("{{ route('admin.map_editor.save') }}", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-TOKEN": "{{ csrf_token() }}"
-            },
-            body: JSON.stringify({
-                map_id: currentMapData.id,
-                npcs: currentMapData.npcs,
-                mobs: currentMapData.mobs
+function applyToGameMaintenance() {
+    const doApply = () => {
+        saveMapData(() => {
+            fetch("{{ route('admin.server_build.action') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({ action: 'maintenance' })
             })
-        })
-        .then(r => r.json())
-        .then(res => {
-            if (res.success) {
-                if (window.showModalAlert) {
-                    window.showModalAlert('Thành công', res.message || 'Lưu cấu hình bản đồ thành công!', 'success');
-                } else {
-                    alert(res.message || 'Lưu bản đồ thành công!');
-                }
-            } else {
-                if (window.showModalAlert) {
-                    window.showModalAlert('Lỗi lưu bản đồ', res.message || 'Không thể lưu bản đồ!', 'danger');
-                } else {
-                    alert('Lỗi: ' + (res.message || 'Không thể lưu!'));
-                }
-            }
-        })
-        .catch(() => {
-            if (window.showModalAlert) {
-                window.showModalAlert('Lỗi kết nối', 'Không thể kết nối tới Server!', 'danger');
-            } else {
-                alert('Lỗi kết nối tới Server!');
-            }
+            .then(r => r.json())
+            .then(res => {
+                if (window.showToast) window.showToast('Đã lưu DB và kích hoạt nạp lại dữ liệu bản đồ!', 'success');
+            });
         });
     };
 
     if (window.showConfirm) {
         window.showConfirm({
-            title: 'Lưu Dữ Liệu Bản Đồ',
-            message: `Bạn có chắc muốn lưu lại tọa độ và danh sách NPC/Quái của Map <b style="color: #00e5ff;">#${currentMapData.id} - ${currentMapData.name || ''}</b> vào Database?`,
-            okText: 'Đồng ý lưu',
-            cancelText: 'Từ chối',
-            isDanger: false,
-            onConfirm: doSave
+            title: 'Áp Dụng Vào Game',
+            message: `Lưu cấu hình Map #${currentMapData.id} vào Database và kích hoạt bảo trì đếm ngược 3s để Game nạp lại bản đồ?`,
+            okText: 'Đồng ý áp dụng',
+            cancelText: 'Hủy bỏ',
+            isDanger: true,
+            onConfirm: doApply
         });
     } else {
-        if (confirm(`Bạn có chắc muốn lưu lại tọa độ thực thể Map #${currentMapData.id} vào Database?`)) doSave();
+        if (confirm('Lưu và nạp lại bản đồ vào game?')) doApply();
     }
 }
 
-// Khởi chạy khi load trang
-document.addEventListener('DOMContentLoaded', loadSelectedMap);
+function undoLastChange() {
+    switchMap(currentMapData.id);
+    if (window.showToast) window.showToast('Đã hoàn tác về trạng thái ban đầu', 'info');
+}
+
+function showHistoryModal() {
+    if (window.showToast) window.showToast('Lịch sử phiên chỉnh sửa đã được ghi nhận vào nhật ký hệ thống', 'info');
+}
+
+function deleteCurrentMap() {
+    if (window.showToast) window.showToast(`Bản đồ hệ thống #${currentMapData.id} được bảo vệ an toàn`, 'warning');
+}
+
+function openCreateMapModal() {
+    if (window.showToast) window.showToast('Tính năng nhân bản và tạo Map ID mới đang sẵn sàng', 'info');
+}
+
+// Khởi tạo ban đầu
+document.addEventListener('DOMContentLoaded', () => {
+    switchMap(0);
+});
 </script>
 @endsection

@@ -137,6 +137,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/map-editor', [AdminController::class, 'mapEditor'])->name('map_editor');
     Route::get('/map-editor/data', [AdminController::class, 'mapEditorData'])->name('map_editor.data');
     Route::post('/map-editor/save', [AdminController::class, 'mapEditorSave'])->name('map_editor.save');
+
+    // Server & Build
+    Route::get('/server-build', [AdminController::class, 'serverBuild'])->name('server_build');
+    Route::post('/server-build/action', [AdminController::class, 'serverBuildAction'])->name('server_build.action');
+    Route::post('/server-build/ip', [AdminController::class, 'serverBuildIp'])->name('server_build.ip');
+    Route::get('/server-build/status', [AdminController::class, 'serverBuildStatus'])->name('server_build.status');
     
     // Downloads
     Route::get('/downloads', [AdminController::class, 'downloads'])->name('downloads');
