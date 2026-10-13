@@ -274,10 +274,16 @@ class AdminController extends Controller
     {
         $account = Account::findOrFail($id);
         
+        $allOptions = DB::table('item_option_template')
+            ->select('id', DB::raw('COALESCE(NAME, name) as name'))
+            ->orderBy('id', 'asc')
+            ->get();
+
         // 1. Thử gọi Game Server API nếu player đang online
         $res = $this->callGameApi('/api/player/items', ['username' => $account->username], 'GET');
         if (!empty($res['success'])) {
             $res['source'] = 'ram';
+            $res['allOptions'] = $allOptions;
             return response()->json($res);
         }
 
@@ -344,7 +350,8 @@ class AdminController extends Controller
             'source' => 'db',
             'username' => $account->username,
             'body' => $bodyItems,
-            'bag' => $bagItems
+            'bag' => $bagItems,
+            'allOptions' => $allOptions
         ]);
     }
 
@@ -401,6 +408,47 @@ class AdminController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Đã lưu thay đổi món đồ vào Database thành công (nhân vật offline)!'
+        ]);
+    }
+
+    public function playerItemDelete(Request $request, $id)
+    {
+        $account = Account::findOrFail($id);
+        $type = $request->input('type', 'bag');
+        $index = (int) $request->input('index', 0);
+
+        // 1. Thử gọi Game Server API nếu player online
+        $res = $this->callGameApi('/api/player/item/delete', [
+            'username' => $account->username,
+            'type' => $type,
+            'index' => $index
+        ]);
+
+        if (!empty($res['success'])) {
+            return response()->json($res);
+        }
+
+        // 2. Nếu offline, xóa trực tiếp khỏi MySQL database
+        $column = ($type === 'body') ? 'items_body' : 'items_bag';
+        $player = DB::table('player')->where('account_id', $account->id)->first();
+        if (!$player) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy nhân vật trong Database!']);
+        }
+
+        $slots = json_decode($player->{$column}, true);
+        if (!is_array($slots) || !isset($slots[$index])) {
+            return response()->json(['success' => false, 'message' => "Không tìm thấy ô #{$index} trong {$type}!"]);
+        }
+
+        $slots[$index] = '[-1,0,"[]",' . (time() * 1000) . ']';
+
+        DB::table('player')->where('account_id', $account->id)->update([
+            $column => json_encode($slots)
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã xóa món đồ khỏi Database thành công (nhân vật offline)!'
         ]);
     }
 
@@ -1429,7 +1477,11 @@ class AdminController extends Controller
     {
         $maps = DB::table('map_template')->select('id', DB::raw('COALESCE(NAME, name) as name'))->orderBy('id', 'asc')->get();
         $npcTemplates = DB::table('npc_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'avatar')->orderBy('id', 'asc')->get();
+        $radarMobIcons = DB::table('radar')->where('type', 0)->pluck('iconId', 'template')->toArray();
         $mobTemplates = DB::table('mob_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'hp')->orderBy('id', 'asc')->get();
+        foreach ($mobTemplates as $mt) {
+            $mt->iconId = $radarMobIcons[$mt->id] ?? (7466 + ($mt->id % 12));
+        }
         return view('admin.map_editor', compact('maps', 'npcTemplates', 'mobTemplates'));
     }
 
@@ -1444,6 +1496,7 @@ class AdminController extends Controller
 
             $mapName = $map->NAME ?? $map->name ?? ("Bản đồ #" . $mapId);
 
+            $radarMobIcons = DB::table('radar')->where('type', 0)->pluck('iconId', 'template')->toArray();
             $npcTemplates = DB::table('npc_template')->get()->keyBy('id');
             $mobTemplates = DB::table('mob_template')->get()->keyBy('id');
 
@@ -1480,13 +1533,15 @@ class AdminController extends Controller
                 if (is_array($m) && count($m) >= 5) {
                     $mobId = (int)$m[0];
                     $t = $mobTemplates[$mobId] ?? null;
+                    $iconId = $radarMobIcons[$mobId] ?? (7466 + ($mobId % 12));
                     $mobs[] = [
                         'id' => $mobId,
                         'level' => (int)$m[1],
                         'hp' => (int)$m[2],
                         'x' => (int)$m[3],
                         'y' => (int)$m[4],
-                        'name' => $t ? ($t->NAME ?? $t->name ?? "Quái #$mobId") : "Quái #$mobId"
+                        'name' => $t ? ($t->NAME ?? $t->name ?? "Quái #$mobId") : "Quái #$mobId",
+                        'iconId' => (int)$iconId
                     ];
                 }
             }

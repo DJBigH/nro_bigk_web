@@ -107,78 +107,83 @@
     @if(empty($bosses))
         <p style="padding: 30px; text-align: center; color: var(--text-muted);">Hiện tại không thể kết nối tới Game Server hoặc danh sách Boss đang rỗng.</p>
     @else
-        <div style="overflow-x: auto;">
-            <table style="margin-top: 0; width: 100%;">
+        <div style="width: 100%; overflow-x: auto;">
+            <table style="margin-top: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
                 <thead>
                     <tr>
-                        <th style="width: 80px;">ID Boss</th>
-                        <th>Tên Boss</th>
-                        <th>Trạng Thái</th>
-                        <th>Vị Trí Bản Đồ</th>
-                        <th>Khu Vực</th>
-                        <th>Máu Hiện Tại (HP)</th>
-                        <th>Hồi Sinh Sau</th>
-                        <th style="text-align: right;">Hành Động Realtime</th>
+                        <th style="width: 55px; padding: 10px 8px; font-size: 0.8rem;">ID</th>
+                        <th style="width: 18%; padding: 10px 8px; font-size: 0.8rem;">Tên Boss</th>
+                        <th style="width: 10%; padding: 10px 8px; font-size: 0.8rem;">Trạng Thái</th>
+                        <th style="width: 20%; padding: 10px 8px; font-size: 0.8rem;">Vị Trí Bản Đồ</th>
+                        <th style="width: 8%; padding: 10px 8px; font-size: 0.8rem;">Khu Vực</th>
+                        <th style="width: 16%; padding: 10px 8px; font-size: 0.8rem;">Máu (HP)</th>
+                        <th style="width: 13%; padding: 10px 8px; font-size: 0.8rem;">Hồi Sinh Sau</th>
+                        <th style="width: 15%; padding: 10px 8px; font-size: 0.8rem; text-align: right;">Hành Động Realtime</th>
                     </tr>
                 </thead>
                 <tbody id="bossTableBody">
                     @foreach($bosses as $b)
                         @php
                             $isLive = ($b['status'] ?? 'LIVE') === 'LIVE';
+                            $safeBossName = addslashes($b['name'] ?? 'Boss');
                         @endphp
                         <tr class="boss-row" data-status="{{ $isLive ? 'live' : 'die' }}">
-                            <td style="font-family: 'Orbitron', sans-serif; color: #aaa;">{{ $b['id'] }}</td>
-                            <td style="font-weight: 700; color: {{ $isLive ? '#ff5722' : '#888' }};">
+                            <td style="font-family: 'Orbitron', sans-serif; color: #888; font-size: 0.8rem; padding: 10px 8px;">{{ $b['id'] }}</td>
+                            <td style="font-weight: 700; color: {{ $isLive ? '#ff5722' : '#888' }}; font-size: 0.85rem; padding: 10px 8px; word-break: break-word;">
                                 {{ $b['name'] }}
                             </td>
-                            <td>
+                            <td style="padding: 10px 8px;">
                                 @if($isLive)
-                                    <span class="badge" style="background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676; font-weight: 700; padding: 3px 8px;">
+                                    <span class="badge" style="background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid #00e676; font-weight: 700; padding: 2px 7px; font-size: 0.75rem;">
                                         ● LIVE
                                     </span>
                                 @else
-                                    <span class="badge" style="background: rgba(255, 23, 68, 0.15); color: #ff1744; border: 1px solid #ff1744; font-weight: 700; padding: 3px 8px;">
+                                    <span class="badge" style="background: rgba(255, 23, 68, 0.15); color: #ff1744; border: 1px solid #ff1744; font-weight: 700; padding: 2px 7px; font-size: 0.75rem;">
                                         ○ DIE
                                     </span>
                                 @endif
                             </td>
-                            <td style="color: #fff;">
+                            <td style="color: #fff; font-size: 0.82rem; padding: 10px 8px; word-break: break-word;">
                                 {{ $b['mapName'] ?? 'Chưa xuất hiện' }}
                                 @if(!empty($b['mapId']) && $b['mapId'] > 0)
-                                    <span style="color: #888; font-size: 0.85rem;">(Map {{ $b['mapId'] }})</span>
+                                    <span style="color: #888; font-size: 0.75rem;">(Map {{ $b['mapId'] }})</span>
                                 @endif
                             </td>
-                            <td style="font-family: 'Orbitron', sans-serif;">
+                            <td style="font-family: 'Orbitron', sans-serif; padding: 10px 8px;">
                                 @if($isLive && isset($b['zoneId']) && $b['zoneId'] >= 0)
-                                    <span style="color: #00bcd4; font-weight: 700;">Khu {{ $b['zoneId'] }}</span>
+                                    <span style="color: #00bcd4; font-weight: 700; font-size: 0.82rem;">Khu {{ $b['zoneId'] }}</span>
                                 @else
                                     <span style="color: #555;">-</span>
                                 @endif
                             </td>
-                            <td style="font-family: 'Orbitron', sans-serif;">
+                            <td style="font-family: 'Orbitron', sans-serif; font-size: 0.78rem; padding: 10px 8px;">
                                 @if($isLive)
-                                    <span style="color: #00e676; font-weight: 700;">{{ number_format($b['hp']) }}</span> / 
-                                    <span style="color: #888;">{{ number_format($b['hpMax']) }}</span>
+                                    <span style="color: #00e676; font-weight: 700;">{{ number_format($b['hp']) }}</span>
+                                    <div style="color: #666; font-size: 0.72rem;">/ {{ number_format($b['hpMax']) }}</div>
                                 @else
-                                    <span style="color: #555;">0</span> / 
-                                    <span style="color: #666;">{{ number_format($b['hpMax']) }}</span>
+                                    <span style="color: #555;">0</span>
+                                    <div style="color: #555; font-size: 0.72rem;">/ {{ number_format($b['hpMax']) }}</div>
                                 @endif
                             </td>
-                            <td style="font-family: 'Orbitron', sans-serif;">
+                            <td style="font-family: 'Orbitron', sans-serif; padding: 10px 8px;">
                                 @if(!$isLive && !empty($b['respawnIn']) && $b['respawnIn'] > 0)
-                                    <span style="color: #ff9800; font-size: 0.85rem;">⏱️ {{ $b['respawnIn'] }}s</span>
+                                    <span class="respawn-ticker" data-seconds="{{ $b['respawnIn'] }}" style="color: #ff9800; font-size: 0.82rem; font-weight: 700; display: inline-block;">
+                                        ⏱️ {{ $b['respawnIn'] }}s
+                                    </span>
+                                @elseif(!$isLive)
+                                    <span style="color: #00e676; font-size: 0.78rem; font-weight: 700;">⚡ Sẵn sàng</span>
                                 @else
                                     <span style="color: #555;">-</span>
                                 @endif
                             </td>
-                            <td style="text-align: right; white-space: nowrap;">
+                            <td style="text-align: right; white-space: nowrap; padding: 10px 8px;">
                                 @if($isLive)
-                                    <button class="btn btn-danger" style="padding: 5px 12px; font-size: 0.8rem; background: #d32f2f; white-space: nowrap;" onclick="killBoss({{ $b['id'] }}, '{{ $b['name'] }}')">
+                                    <button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.75rem; background: #d32f2f; white-space: nowrap;" onclick="killBoss({{ $b['id'] }}, '{{ $safeBossName }}')">
                                         🛑 THU HỒI
                                     </button>
                                 @else
-                                    <button class="btn" style="padding: 5px 12px; font-size: 0.8rem; background: #ff5722; font-weight: 700; white-space: nowrap;" onclick="spawnDirectBoss({{ $b['id'] }}, '{{ $b['name'] }}')">
-                                        ⚡ HỒI SINH NGAY
+                                    <button class="btn" style="padding: 4px 10px; font-size: 0.75rem; background: #ff5722; font-weight: 700; white-space: nowrap;" onclick="spawnDirectBoss({{ $b['id'] }}, '{{ $safeBossName }}')">
+                                        ⚡ HỒI SINH
                                     </button>
                                 @endif
                             </td>
@@ -195,6 +200,22 @@
 </div>
 
 <script>
+// Realtime Client Countdown Ticker (Runs every 1000ms without F5)
+setInterval(() => {
+    document.querySelectorAll('.respawn-ticker').forEach(el => {
+        let sec = parseInt(el.getAttribute('data-seconds')) || 0;
+        if (sec > 0) {
+            sec--;
+            el.setAttribute('data-seconds', sec);
+            el.innerText = '⏱️ ' + sec + 's';
+            if (sec === 0) {
+                el.innerText = '⚡ Sẵn sàng';
+                el.style.color = '#00e676';
+            }
+        }
+    });
+}, 1000);
+
 function filterBoss(type) {
     const rows = document.querySelectorAll('.boss-row');
     rows.forEach(r => {
@@ -208,12 +229,21 @@ function filterBoss(type) {
 
 document.getElementById('summonBossForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const bossId = document.getElementById('bossSelect').value;
-    spawnDirectBoss(bossId, 'Boss');
+    const bossSelect = document.getElementById('bossSelect');
+    const bossId = bossSelect.value;
+    const bossName = bossSelect.options[bossSelect.selectedIndex]?.text || 'Boss';
+    spawnDirectBoss(bossId, bossName);
 });
 
-function spawnDirectBoss(bossId, bossName) {
-    if (!confirm('Bạn có muốn triệu hồi / hồi sinh ' + bossName + ' ngay lập tức?')) return;
+async function spawnDirectBoss(bossId, bossName) {
+    const confirmed = await window.showConfirm({
+        title: 'HỒI SINH BOSS NGAY',
+        message: `Bạn có đồng ý <strong>HỒI SINH NGAY LẬP TỨC</strong> boss <strong>"${bossName}"</strong> vào bản đồ không?`,
+        okText: 'Đồng ý',
+        cancelText: 'Từ chối',
+        isDanger: false
+    });
+    if (!confirmed) return;
 
     fetch('{{ route("admin.bosses.spawn") }}', {
         method: 'POST',
@@ -224,15 +254,22 @@ function spawnDirectBoss(bossId, bossName) {
         body: JSON.stringify({ boss_id: parseInt(bossId) })
     })
     .then(r => r.json())
-    .then(d => {
-        alert(d.message || 'Thực hiện thành công!');
+    .then(async d => {
+        await window.showModalAlert('THÀNH CÔNG', d.message || 'Boss đã được hồi sinh và vào map!', (d.success || d.status === 'success') ? 'success' : 'error');
         if (d.success || d.status === 'success') location.reload();
     })
-    .catch(() => alert('Lỗi kết nối máy chủ'));
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối máy chủ', 'error'));
 }
 
-function killBoss(bossId, bossName) {
-    if (!confirm('Bạn có chắc chắn muốn thu hồi boss ' + bossName + ' không?')) return;
+async function killBoss(bossId, bossName) {
+    const confirmed = await window.showConfirm({
+        title: 'THU HỒI BOSS',
+        message: `Bạn có đồng ý <strong>THU HỒI</strong> boss <strong>"${bossName}"</strong> rời khỏi bản đồ không?`,
+        okText: 'Đồng ý',
+        cancelText: 'Từ chối',
+        isDanger: true
+    });
+    if (!confirmed) return;
 
     fetch('{{ route("admin.bosses.kill") }}', {
         method: 'POST',
@@ -243,11 +280,11 @@ function killBoss(bossId, bossName) {
         body: JSON.stringify({ boss_id: parseInt(bossId) })
     })
     .then(r => r.json())
-    .then(d => {
-        alert(d.message || 'Thực hiện thành công!');
+    .then(async d => {
+        await window.showModalAlert('THÀNH CÔNG', d.message || 'Đã thu hồi boss thành công!', (d.success || d.status === 'success') ? 'success' : 'error');
         if (d.success || d.status === 'success') location.reload();
     })
-    .catch(() => alert('Lỗi kết nối máy chủ'));
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối máy chủ', 'error'));
 }
 </script>
 @endsection

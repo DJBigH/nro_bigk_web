@@ -80,6 +80,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/players/{id}/kick', [AdminController::class, 'kickPlayer'])->name('players.kick');
     Route::get('/players/{id}/items', [AdminController::class, 'playerItems'])->name('players.items');
     Route::post('/players/{id}/item-update', [AdminController::class, 'playerItemUpdate'])->name('players.item-update');
+    Route::post('/players/{id}/item-delete', [AdminController::class, 'playerItemDelete'])->name('players.item-delete');
     Route::post('/server/notify', [AdminController::class, 'sendServerNotify'])->name('server.notify');
     Route::post('/server/maintenance', [AdminController::class, 'startMaintenance'])->name('server.maintenance');
     Route::get('/server/stats', [AdminController::class, 'getServerStats'])->name('server.stats');

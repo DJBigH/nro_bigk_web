@@ -182,7 +182,53 @@
 
 </div>
 
-<!-- Sidebar Interactive Accordion Script -->
+<!-- Global Cyberpunk Confirmation Modal (Đồng ý / Từ chối) -->
+<div id="cyberConfirmModal" style="display: none; position: fixed; inset: 0; background: rgba(3, 7, 18, 0.88); backdrop-filter: blur(6px); z-index: 99999; align-items: center; justify-content: center; padding: 15px;">
+    <div class="card" style="max-width: 480px; width: 100%; border: 1px solid var(--primary); box-shadow: 0 0 35px rgba(255, 107, 0, 0.35); background: #0c101c; border-radius: 12px; padding: 24px; animation: modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
+            <div id="cyberConfirmIcon" style="font-size: 1.4rem;">⚠️</div>
+            <h3 id="cyberConfirmTitle" style="color: #fff; font-family: 'Orbitron', sans-serif; font-size: 1.05rem; margin: 0; letter-spacing: 0.5px;">XÁC NHẬN THAO TÁC</h3>
+        </div>
+        <p id="cyberConfirmMessage" style="color: #cbd5e1; font-size: 0.92rem; line-height: 1.6; margin: 0 0 22px 0;">
+            Bạn có chắc chắn muốn thực hiện hành động này?
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button type="button" id="cyberConfirmCancelBtn" class="btn btn-secondary" style="padding: 9px 20px; font-weight: 600; font-size: 0.88rem; border-color: rgba(255,255,255,0.2); min-width: 100px;">
+                Từ chối
+            </button>
+            <button type="button" id="cyberConfirmOkBtn" class="btn" style="padding: 9px 22px; font-weight: 700; font-size: 0.88rem; background: var(--primary); box-shadow: 0 0 15px rgba(255,107,0,0.4); min-width: 110px;">
+                Đồng ý
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Global Cyberpunk Alert Modal -->
+<div id="cyberAlertModal" style="display: none; position: fixed; inset: 0; background: rgba(3, 7, 18, 0.88); backdrop-filter: blur(6px); z-index: 99999; align-items: center; justify-content: center; padding: 15px;">
+    <div class="card" style="max-width: 460px; width: 100%; border: 1px solid #00bcd4; box-shadow: 0 0 35px rgba(0, 188, 212, 0.35); background: #0c101c; border-radius: 12px; padding: 24px; animation: modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
+            <div id="cyberAlertIcon" style="font-size: 1.4rem;">ℹ️</div>
+            <h3 id="cyberAlertTitle" style="color: #00e5ff; font-family: 'Orbitron', sans-serif; font-size: 1.05rem; margin: 0; letter-spacing: 0.5px;">THÔNG BÁO</h3>
+        </div>
+        <p id="cyberAlertMessage" style="color: #cbd5e1; font-size: 0.92rem; line-height: 1.6; margin: 0 0 22px 0;">
+            Nội dung thông báo
+        </p>
+        <div style="display: flex; justify-content: flex-end;">
+            <button type="button" id="cyberAlertOkBtn" class="btn" style="padding: 9px 24px; font-weight: 700; font-size: 0.88rem; background: #00bcd4; box-shadow: 0 0 15px rgba(0,188,212,0.4); min-width: 110px;">
+                ĐÃ HIỂU
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+}
+</style>
+
+<!-- Sidebar Interactive Accordion & Global Modal Script -->
 <script>
 function toggleGroup(groupId) {
     const group = document.getElementById(groupId);
@@ -217,5 +263,110 @@ function toggleAllGroups() {
         }
     });
 }
+
+/**
+ * Global Cyberpunk Confirmation Dialog with "Đồng ý" and "Từ chối"
+ * Returns Promise<boolean> or invokes callback onOk / onCancel
+ */
+window.showConfirm = function(options) {
+    return new Promise((resolve) => {
+        const opts = (typeof options === 'string') ? { message: options } : (options || {});
+        const title = opts.title || 'XÁC NHẬN THAO TÁC';
+        const message = opts.message || 'Bạn có chắc chắn muốn thực hiện hành động này?';
+        const okText = opts.okText || 'Đồng ý';
+        const cancelText = opts.cancelText || 'Từ chối';
+        const isDanger = opts.isDanger !== false; // Default true for security/admin actions
+
+        const modal = document.getElementById('cyberConfirmModal');
+        const titleEl = document.getElementById('cyberConfirmTitle');
+        const msgEl = document.getElementById('cyberConfirmMessage');
+        const iconEl = document.getElementById('cyberConfirmIcon');
+        const okBtn = document.getElementById('cyberConfirmOkBtn');
+        const cancelBtn = document.getElementById('cyberConfirmCancelBtn');
+
+        titleEl.innerText = title;
+        msgEl.innerHTML = message;
+        okBtn.innerText = okText;
+        cancelBtn.innerText = cancelText;
+
+        if (isDanger) {
+            iconEl.innerText = '⚠️';
+            okBtn.style.background = '#e53935';
+            okBtn.style.boxShadow = '0 0 15px rgba(229,57,53,0.5)';
+        } else {
+            iconEl.innerText = '⚡';
+            okBtn.style.background = 'var(--primary)';
+            okBtn.style.boxShadow = '0 0 15px rgba(255,107,0,0.5)';
+        }
+
+        modal.style.display = 'flex';
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+        };
+
+        okBtn.onclick = () => {
+            cleanup();
+            if (typeof opts.onOk === 'function') opts.onOk();
+            resolve(true);
+        };
+
+        cancelBtn.onclick = () => {
+            cleanup();
+            if (typeof opts.onCancel === 'function') opts.onCancel();
+            resolve(false);
+        };
+    });
+};
+
+/**
+ * Global Cyberpunk Alert Modal (replacement for alert)
+ */
+window.showModalAlert = function(title, message, type = 'info') {
+    return new Promise((resolve) => {
+        let msg = message;
+        let t = title;
+        if (msg === undefined) {
+            msg = t;
+            t = 'THÔNG BÁO';
+        }
+
+        const modal = document.getElementById('cyberAlertModal');
+        const titleEl = document.getElementById('cyberAlertTitle');
+        const msgEl = document.getElementById('cyberAlertMessage');
+        const iconEl = document.getElementById('cyberAlertIcon');
+        const okBtn = document.getElementById('cyberAlertOkBtn');
+
+        titleEl.innerText = t;
+        msgEl.innerHTML = msg;
+
+        if (type === 'success') {
+            iconEl.innerText = '✅';
+            titleEl.style.color = '#00e676';
+            okBtn.style.background = '#00c853';
+            okBtn.style.boxShadow = '0 0 15px rgba(0,200,83,0.5)';
+        } else if (type === 'error') {
+            iconEl.innerText = '❌';
+            titleEl.style.color = '#ff5252';
+            okBtn.style.background = '#d32f2f';
+            okBtn.style.boxShadow = '0 0 15px rgba(211,47,47,0.5)';
+        } else {
+            iconEl.innerText = 'ℹ️';
+            titleEl.style.color = '#00e5ff';
+            okBtn.style.background = '#00bcd4';
+            okBtn.style.boxShadow = '0 0 15px rgba(0,188,212,0.5)';
+        }
+
+        modal.style.display = 'flex';
+
+        okBtn.onclick = () => {
+            modal.style.display = 'none';
+            okBtn.onclick = null;
+            resolve(true);
+        };
+    });
+};
 </script>
 @endsection

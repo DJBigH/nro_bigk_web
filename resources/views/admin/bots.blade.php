@@ -130,60 +130,58 @@
             <button class="btn" style="background: #00bcd4; margin-top: 10px;" onclick="spawnBots(5)">Thả ngay 5 Bot đầu tiên</button>
         </div>
     @else
-        <div style="overflow-x: auto;">
-            <table style="margin-top: 0; width: 100%;">
+        <div style="width: 100%; overflow-x: auto;">
+            <table style="margin-top: 0; width: 100%; table-layout: fixed; border-collapse: collapse;">
                 <thead>
                     <tr>
-                        <th style="width: 40px; text-align: center;">
-                            <input type="checkbox" id="selectAllBots" onclick="toggleSelectAllBots(this)" style="cursor: pointer; width: 16px; height: 16px;" title="Chọn tất cả bot trên trang">
+                        <th style="width: 35px; text-align: center; padding: 10px 6px;">
+                            <input type="checkbox" id="selectAllBots" onclick="toggleSelectAllBots(this)" style="cursor: pointer; width: 15px; height: 15px;" title="Chọn tất cả bot trên trang">
                         </th>
-                        <th style="width: 80px;">ID</th>
-                        <th>Tên Bot</th>
-                        <th>Bản Đồ</th>
-                        <th>Khu Vực</th>
-                        <th>Sức Mạnh</th>
-                        <th>Máu (HP)</th>
-                        <th style="text-align: right; width: 170px;">Hành Động</th>
+                        <th style="width: 50px; padding: 10px 6px; font-size: 0.8rem;">ID</th>
+                        <th style="width: 18%; padding: 10px 8px; font-size: 0.8rem;">Tên Bot</th>
+                        <th style="width: 20%; padding: 10px 8px; font-size: 0.8rem;">Bản Đồ</th>
+                        <th style="width: 10%; padding: 10px 8px; font-size: 0.8rem;">Khu Vực</th>
+                        <th style="width: 14%; padding: 10px 8px; font-size: 0.8rem;">Sức Mạnh</th>
+                        <th style="width: 14%; padding: 10px 8px; font-size: 0.8rem;">Máu (HP)</th>
+                        <th style="width: 16%; text-align: right; padding: 10px 8px; font-size: 0.8rem;">Hành Động</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($bots as $bot)
+                        @php
+                            $safeBotName = addslashes($bot['name'] ?? 'Bot AI');
+                        @endphp
                         <tr>
-                            <td style="text-align: center;">
-                                <input type="checkbox" class="bot-checkbox" value="{{ $bot['id'] }}" onchange="onBotCheckChange()" style="cursor: pointer; width: 16px; height: 16px;">
+                            <td style="text-align: center; padding: 10px 6px;">
+                                <input type="checkbox" class="bot-checkbox" value="{{ $bot['id'] }}" onchange="onBotCheckChange()" style="cursor: pointer; width: 15px; height: 15px;">
                             </td>
-                            <td style="font-family: 'Orbitron', sans-serif; color: #888;">{{ $bot['id'] ?? 'BOT' }}</td>
-                            <td style="font-weight: 700; color: #00e5ff;">
+                            <td style="font-family: 'Orbitron', sans-serif; color: #888; font-size: 0.8rem; padding: 10px 6px;">{{ $bot['id'] ?? 'BOT' }}</td>
+                            <td style="font-weight: 700; color: #00e5ff; font-size: 0.85rem; padding: 10px 8px; word-break: break-word;">
                                 🤖 {{ $bot['name'] ?? 'Bot AI' }}
                             </td>
-                            <td style="color: #fff;">
+                            <td style="color: #fff; font-size: 0.82rem; padding: 10px 8px; word-break: break-word;">
                                 <strong style="color: #00e5ff;">{{ $bot['mapName'] ?? 'Chưa vào Map' }}</strong> 
                                 @if(isset($bot['mapId']) && $bot['mapId'] >= 0)
-                                    <span style="color: #888; font-size: 0.82rem;">(Map {{ $bot['mapId'] }})</span>
+                                    <span style="color: #888; font-size: 0.75rem;">(Map {{ $bot['mapId'] }})</span>
                                 @endif
                             </td>
-                            <td style="font-family: 'Orbitron', sans-serif;">
+                            <td style="font-family: 'Orbitron', sans-serif; padding: 10px 8px;">
                                 @if(isset($bot['zoneId']) && $bot['zoneId'] >= 0)
-                                    <span style="color: #ff9800; font-weight: 700;">Khu {{ $bot['zoneId'] }}</span>
+                                    <span style="color: #ff9800; font-weight: 700; font-size: 0.82rem;">Khu {{ $bot['zoneId'] }}</span>
                                 @else
                                     <span style="color: #666;">-</span>
                                 @endif
                             </td>
-                            <td style="font-family: 'Orbitron', sans-serif; color: #e91e63; font-weight: 600;">
+                            <td style="font-family: 'Orbitron', sans-serif; color: #e91e63; font-weight: 600; font-size: 0.8rem; padding: 10px 8px;">
                                 {{ number_format($bot['power'] ?? 0) }}
                             </td>
-                            <td style="font-family: 'Orbitron', sans-serif; color: #4caf50;">
+                            <td style="font-family: 'Orbitron', sans-serif; color: #4caf50; font-size: 0.8rem; padding: 10px 8px;">
                                 {{ number_format($bot['hp'] ?? 0) }}
                             </td>
-                            <td style="text-align: right; white-space: nowrap;">
-                                <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                    <span class="badge badge-success" style="font-size: 0.75rem; background: rgba(76,175,80,0.2); color: #4caf50; border: 1px solid #4caf50;">
-                                        Auto Farm
-                                    </span>
-                                    <button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.78rem; background: #d32f2f; white-space: nowrap; font-weight: 700;" onclick="stopSingleBot({{ $bot['id'] }}, '{{ $bot['name'] }}')">
-                                        🛑 Dừng Bot
-                                    </button>
-                                </div>
+                            <td style="text-align: right; white-space: nowrap; padding: 10px 8px;">
+                                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.75rem; background: #d32f2f; white-space: nowrap; font-weight: 700;" onclick="stopSingleBot({{ $bot['id'] }}, '{{ $safeBotName }}')">
+                                    🛑 Dừng Bot
+                                </button>
                             </td>
                         </tr>
                     @endforeach
@@ -199,8 +197,15 @@
 
 <script>
 // Thả Bot
-function spawnBots(count) {
-    if (!confirm(`Bạn có chắc muốn thả thêm ${count} Bot AI vào server?`)) return;
+async function spawnBots(count) {
+    const confirmed = await window.showConfirm({
+        title: 'THẢ BOT AI',
+        message: `Bạn có đồng ý thả thêm <strong>${count} Bot AI</strong> vào máy chủ không?`,
+        okText: 'Đồng ý',
+        cancelText: 'Từ chối',
+        isDanger: false
+    });
+    if (!confirmed) return;
     
     fetch("{{ route('admin.bots.spawn') }}", {
         method: "POST",
@@ -211,31 +216,36 @@ function spawnBots(count) {
         body: JSON.stringify({ count: count })
     })
     .then(r => r.json())
-    .then(data => {
+    .then(async data => {
         if (data.success || data.status === 'success') {
-            alert(data.message || `Đã thả thành công ${count} Bot AI!`);
+            await window.showModalAlert('THÀNH CÔNG', data.message || `Đã thả thành công ${count} Bot AI!`, 'success');
             location.reload();
         } else {
-            alert('Lỗi: ' + (data.message || 'Không thể kết nối Game Server!'));
+            await window.showModalAlert('LỖI', data.message || 'Không thể kết nối Game Server!', 'error');
         }
     })
-    .catch(err => {
-        alert('Lỗi kết nối tới Server!');
-    });
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối tới Server!', 'error'));
 }
 
 function spawnCustomBots() {
     const val = parseInt(document.getElementById('customBotCount').value);
     if (!val || val <= 0 || val > 100) {
-        alert('Vui lòng nhập số lượng từ 1 đến 100!');
+        window.showModalAlert('CẢNH BÁO', 'Vui lòng nhập số lượng từ 1 đến 100!', 'warning');
         return;
     }
     spawnBots(val);
 }
 
 // Dừng 1 con bot cụ thể theo ID
-function stopSingleBot(botId, botName) {
-    if (!confirm(`Bạn có chắc muốn dừng Bot "${botName}" (ID: ${botId})?`)) return;
+async function stopSingleBot(botId, botName) {
+    const confirmed = await window.showConfirm({
+        title: 'DỪNG BOT AI',
+        message: `Bạn có đồng ý dừng <strong>Bot "${botName}"</strong> (ID: ${botId}) không?`,
+        okText: 'Đồng ý',
+        cancelText: 'Từ chối',
+        isDanger: true
+    });
+    if (!confirmed) return;
 
     fetch("{{ route('admin.bots.stop') }}", {
         method: "POST",
@@ -246,20 +256,27 @@ function stopSingleBot(botId, botName) {
         body: JSON.stringify({ bot_id: botId })
     })
     .then(r => r.json())
-    .then(res => {
+    .then(async res => {
         if (res.success || res.status === 'success') {
-            alert(res.message || `Đã dừng Bot ${botName} thành công!`);
+            await window.showModalAlert('THÀNH CÔNG', res.message || `Đã dừng Bot ${botName} thành công!`, 'success');
             location.reload();
         } else {
-            alert('Lỗi: ' + (res.message || 'Không thể dừng bot!'));
+            await window.showModalAlert('LỖI', res.message || 'Không thể dừng bot!', 'error');
         }
     })
-    .catch(() => alert('Lỗi kết nối tới Server!'));
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối tới Server!', 'error'));
 }
 
 // Dừng N con bot nhanh
-function stopCountBots(count) {
-    if (!confirm(`Bạn có chắc muốn dừng ${count} Bot AI đang hoạt động?`)) return;
+async function stopCountBots(count) {
+    const confirmed = await window.showConfirm({
+        title: 'DỪNG BOT AI',
+        message: `Bạn có đồng ý dừng <strong>${count} Bot AI</strong> đang hoạt động không?`,
+        okText: 'Đồng ý',
+        cancelText: 'Từ chối',
+        isDanger: true
+    });
+    if (!confirmed) return;
 
     fetch("{{ route('admin.bots.stop') }}", {
         method: "POST",
@@ -270,15 +287,15 @@ function stopCountBots(count) {
         body: JSON.stringify({ count: count })
     })
     .then(r => r.json())
-    .then(res => {
+    .then(async res => {
         if (res.success || res.status === 'success') {
-            alert(res.message || `Đã dừng ${count} bot thành công!`);
+            await window.showModalAlert('THÀNH CÔNG', res.message || `Đã dừng ${count} bot thành công!`, 'success');
             location.reload();
         } else {
-            alert('Lỗi: ' + (res.message || 'Không thể dừng bot!'));
+            await window.showModalAlert('LỖI', res.message || 'Không thể dừng bot!', 'error');
         }
     })
-    .catch(() => alert('Lỗi kết nối tới Server!'));
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối tới Server!', 'error'));
 }
 
 // Dừng nhiều bot được tích chọn bằng checkbox
@@ -300,12 +317,19 @@ function onBotCheckChange() {
     }
 }
 
-function stopSelectedBots() {
+async function stopSelectedBots() {
     const checked = document.querySelectorAll('.bot-checkbox:checked');
     if (checked.length === 0) return;
 
     const ids = Array.from(checked).map(c => parseInt(c.value));
-    if (!confirm(`Bạn có chắc muốn dừng ${ids.length} Bot AI đã chọn?`)) return;
+    const confirmed = await window.showConfirm({
+        title: 'DỪNG NHIỀU BOT ĐÃ CHỌN',
+        message: `Bạn có đồng ý dừng <strong>${ids.length} Bot AI</strong> đã chọn khỏi game không?`,
+        okText: 'Đồng ý',
+        cancelText: 'Từ chối',
+        isDanger: true
+    });
+    if (!confirmed) return;
 
     fetch("{{ route('admin.bots.stop') }}", {
         method: "POST",
@@ -316,20 +340,27 @@ function stopSelectedBots() {
         body: JSON.stringify({ bot_ids: ids })
     })
     .then(r => r.json())
-    .then(res => {
+    .then(async res => {
         if (res.success || res.status === 'success') {
-            alert(res.message || `Đã dừng ${ids.length} Bot đã chọn thành công!`);
+            await window.showModalAlert('THÀNH CÔNG', res.message || `Đã dừng ${ids.length} Bot đã chọn thành công!`, 'success');
             location.reload();
         } else {
-            alert('Lỗi: ' + (res.message || 'Không thể dừng bot!'));
+            await window.showModalAlert('LỖI', res.message || 'Không thể dừng bot!', 'error');
         }
     })
-    .catch(() => alert('Lỗi kết nối tới Server!'));
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối tới Server!', 'error'));
 }
 
 // Dừng tất cả bot
-function stopAllBots() {
-    if (!confirm("CẢNH BÁO: Bạn có chắc chắn muốn DỪNG & XÓA TOÀN BỘ BOT AI đang chạy trong game?")) return;
+async function stopAllBots() {
+    const confirmed = await window.showConfirm({
+        title: 'CẢNH BÁO: DỪNG TOÀN BỘ BOT',
+        message: 'Bạn có chắc chắn muốn <strong>DỪNG & XÓA TOÀN BỘ BOT AI</strong> đang chạy trên máy chủ không?',
+        okText: 'Đồng ý',
+        cancelText: 'Từ chối',
+        isDanger: true
+    });
+    if (!confirmed) return;
 
     fetch("{{ route('admin.bots.stop') }}", {
         method: "POST",
@@ -339,22 +370,27 @@ function stopAllBots() {
         }
     })
     .then(r => r.json())
-    .then(data => {
+    .then(async data => {
         if (data.success || data.status === 'success') {
-            alert(data.message || 'Đã dọn dẹp toàn bộ Bot thành công!');
+            await window.showModalAlert('THÀNH CÔNG', data.message || 'Đã dọn dẹp toàn bộ Bot thành công!', 'success');
             location.reload();
         } else {
-            alert('Lỗi: ' + (data.message || 'Không thể dừng Bot!'));
+            await window.showModalAlert('LỖI', data.message || 'Không thể dừng Bot!', 'error');
         }
     })
-    .catch(err => {
-        alert('Lỗi kết nối tới Server!');
-    });
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối tới Server!', 'error'));
 }
 
-function toggleChat(enable) {
+async function toggleChat(enable) {
     const actionText = enable ? 'BẬT' : 'TẮT';
-    if (!confirm(`Bạn có muốn ${actionText} tính năng Bot Tự Động Chat thế giới không?`)) return;
+    const confirmed = await window.showConfirm({
+        title: `${actionText} BOT AUTO CHAT`,
+        message: `Bạn có đồng ý <strong>${actionText}</strong> tính năng Bot Tự Động Chat thế giới không?`,
+        okText: 'Đồng ý',
+        cancelText: 'Từ chối',
+        isDanger: false
+    });
+    if (!confirmed) return;
 
     fetch("{{ route('admin.bots.toggle-chat') }}", {
         method: "POST",
@@ -365,17 +401,14 @@ function toggleChat(enable) {
         body: JSON.stringify({ enabled: enable })
     })
     .then(r => r.json())
-    .then(data => {
+    .then(async data => {
         if (data.success || data.status === 'success') {
-            alert(data.message || `Đã ${actionText} Bot Auto Chat thành công!`);
+            await window.showModalAlert('THÀNH CÔNG', data.message || `Đã ${actionText} Bot Auto Chat thành công!`, 'success');
             location.reload();
         } else {
-            alert('Lỗi: ' + (data.message || 'Không thể cập nhật!'));
+            await window.showModalAlert('LỖI', data.message || 'Không thể cập nhật!', 'error');
         }
     })
-    .catch(err => {
-        alert('Lỗi kết nối tới Server!');
-    });
-}
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối tới Server!', 'error'));
 </script>
 @endsection

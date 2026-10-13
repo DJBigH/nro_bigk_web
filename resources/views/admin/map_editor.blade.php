@@ -64,26 +64,26 @@
 </div>
 
 <!-- Entities Inspector & Manager -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px;">
     <!-- NPCs Table -->
-    <div class="card" style="padding: 15px 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
-            <h3 style="color: #ffd700; font-size: 1rem; margin: 0; display: flex; align-items: center; gap: 6px;">
-                🧙 DANH SÁCH NPC TRÊN MAP (<span id="npcCount">0</span>)
+    <div class="card" style="padding: 14px 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <h3 style="color: #ffd700; font-size: 0.95rem; margin: 0; display: flex; align-items: center; gap: 6px;">
+                🧙 DANH SÁCH NPC (<span id="npcCount">0</span>)
             </h3>
-            <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.8rem; background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700;" onclick="openAddNpcModal()">
-                ➕ Thêm NPC Mới
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem; background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700; white-space: nowrap;" onclick="openAddNpcModal()">
+                ➕ Thêm NPC
             </button>
         </div>
         <div style="max-height: 320px; overflow-y: auto;">
-            <table style="margin-top: 0; width: 100%; font-size: 0.85rem;">
+            <table style="margin-top: 0; width: 100%; font-size: 0.82rem; table-layout: fixed; border-collapse: collapse;">
                 <thead>
                     <tr>
-                        <th style="width: 50px;">Icon</th>
-                        <th>NPC</th>
-                        <th style="width: 80px;">Tọa độ X</th>
-                        <th style="width: 80px;">Tọa độ Y</th>
-                        <th style="text-align: right; width: 45px;">Xóa</th>
+                        <th style="width: 36px; padding: 8px 4px; text-align: center;">Icon</th>
+                        <th style="padding: 8px 4px;">NPC</th>
+                        <th style="width: 55px; text-align: center; padding: 8px 4px;">X</th>
+                        <th style="width: 55px; text-align: center; padding: 8px 4px;">Y</th>
+                        <th style="text-align: right; width: 35px; padding: 8px 4px;">Xóa</th>
                     </tr>
                 </thead>
                 <tbody id="npcTableBody">
@@ -93,24 +93,25 @@
     </div>
 
     <!-- Mobs Table -->
-    <div class="card" style="padding: 15px 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
-            <h3 style="color: #ff5252; font-size: 1rem; margin: 0; display: flex; align-items: center; gap: 6px;">
+    <div class="card" style="padding: 14px 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <h3 style="color: #ff5252; font-size: 0.95rem; margin: 0; display: flex; align-items: center; gap: 6px;">
                 👾 DANH SÁCH QUÁI VẬT (<span id="mobCount">0</span>)
             </h3>
-            <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.8rem; background: rgba(255, 82, 82, 0.2); color: #ff5252; border: 1px solid #ff5252;" onclick="openAddMobModal()">
-                ➕ Thêm Quái Mới
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem; background: rgba(255, 82, 82, 0.2); color: #ff5252; border: 1px solid #ff5252; white-space: nowrap;" onclick="openAddMobModal()">
+                ➕ Thêm Quái
             </button>
         </div>
         <div style="max-height: 320px; overflow-y: auto;">
-            <table style="margin-top: 0; width: 100%; font-size: 0.85rem;">
+            <table style="margin-top: 0; width: 100%; font-size: 0.82rem; table-layout: fixed; border-collapse: collapse;">
                 <thead>
                     <tr>
-                        <th>Tên Quái</th>
-                        <th style="width: 100px;">Cấp / Máu</th>
-                        <th style="width: 80px;">X</th>
-                        <th style="width: 80px;">Y</th>
-                        <th style="text-align: right; width: 45px;">Xóa</th>
+                        <th style="width: 36px; padding: 8px 4px; text-align: center;">Icon</th>
+                        <th style="padding: 8px 4px;">Tên Quái</th>
+                        <th style="width: 90px; padding: 8px 4px;">Cấp / Máu</th>
+                        <th style="width: 55px; text-align: center; padding: 8px 4px;">X</th>
+                        <th style="width: 55px; text-align: center; padding: 8px 4px;">Y</th>
+                        <th style="text-align: right; width: 35px; padding: 8px 4px;">Xóa</th>
                     </tr>
                 </thead>
                 <tbody id="mobTableBody">
@@ -121,7 +122,7 @@
 </div>
 
 <!-- Modal: Thêm NPC -->
-<div id="addNpcModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+<div id="addNpcModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
     <div class="card" style="width: 500px; max-width: 95%; max-height: 80vh; display: flex; flex-direction: column; border: 1px solid #ffd700; box-shadow: 0 0 25px rgba(255,215,0,0.3);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="color: #ffd700; margin: 0; font-size: 1.1rem;">➕ Chọn NPC Cần Đặt Lên Bản Đồ</h3>
@@ -144,7 +145,7 @@
 </div>
 
 <!-- Modal: Thêm Quái -->
-<div id="addMobModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+<div id="addMobModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
     <div class="card" style="width: 500px; max-width: 95%; max-height: 80vh; display: flex; flex-direction: column; border: 1px solid #ff5252; box-shadow: 0 0 25px rgba(255,82,82,0.3);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 style="color: #ff5252; margin: 0; font-size: 1.1rem;">➕ Chọn Quái Vật Đặt Lên Bản Đồ</h3>
@@ -153,8 +154,8 @@
         <input type="text" id="searchMobInput" class="form-input" placeholder="🔍 Gõ tìm Quái theo tên hoặc ID..." oninput="filterMobTemplates()" style="margin-bottom: 12px;">
         <div id="mobTemplateList" style="flex: 1; overflow-y: auto; max-height: 350px; display: grid; grid-template-columns: 1fr; gap: 8px;">
             @foreach($mobTemplates as $mt)
-                <div class="mob-tpl-item" data-id="{{ $mt->id }}" data-name="{{ strtolower($mt->name) }}" data-hp="{{ $mt->hp }}" onclick="selectMobToAdd({{ $mt->id }}, '{{ addslashes($mt->name) }}', {{ $mt->hp }})" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;">
-                    <span style="font-size: 1.5rem;">👾</span>
+                <div class="mob-tpl-item" data-id="{{ $mt->id }}" data-name="{{ strtolower($mt->name) }}" data-hp="{{ $mt->hp }}" onclick="selectMobToAdd({{ $mt->id }}, '{{ addslashes($mt->name) }}', {{ $mt->hp }}, {{ $mt->iconId ?? 0 }})" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s;">
+                    <img src="/images/icons/{{ $mt->iconId ?? 7466 }}.png" onerror="this.src='/images/no_image.png'" style="width: 32px; height: 32px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 4px; padding: 2px;">
                     <div style="flex: 1;">
                         <div style="color: #ff5252; font-weight: 600; font-size: 0.9rem;">{{ $mt->name }}</div>
                         <div style="color: #888; font-size: 0.75rem;">ID: #{{ $mt->id }} | Máu chuẩn: {{ number_format($mt->hp) }} HP</div>
@@ -180,8 +181,9 @@ let currentMapData = {
 let draggingEntity = null;
 let dragType = null; // 'npc' or 'mob'
 
-// Cache hình ảnh Avatar NPC
+// Cache hình ảnh Avatar NPC & Quái
 const npcImageCache = {};
+const mobImageCache = {};
 
 function getNpcImage(avatar) {
     if (!avatar || avatar <= 0) return null;
@@ -194,6 +196,17 @@ function getNpcImage(avatar) {
     return npcImageCache[avatar];
 }
 
+function getMobImage(iconId) {
+    const id = iconId && iconId > 0 ? iconId : 7466;
+    if (!mobImageCache[id]) {
+        const img = new Image();
+        img.src = `/images/icons/${id}.png`;
+        img.onload = () => renderCanvas();
+        mobImageCache[id] = img;
+    }
+    return mobImageCache[id];
+}
+
 function loadSelectedMap() {
     const mapId = document.getElementById('mapSelect').value;
     fetch(`/admin/map-editor/data?map_id=${mapId}`)
@@ -201,19 +214,35 @@ function loadSelectedMap() {
         .then(res => {
             if (res.success) {
                 currentMapData = res.map;
-                // Preload tất cả NPC avatars
+                // Preload tất cả NPC avatars & Mob icons
                 if (currentMapData.npcs) {
                     currentMapData.npcs.forEach(n => {
-                        if (n.avatar) getNpcImage(n.avatar);
+                        const av = n.avatar || (n.id ? n.avatar : 0);
+                        if (av) getNpcImage(av);
+                    });
+                }
+                if (currentMapData.mobs) {
+                    currentMapData.mobs.forEach(m => {
+                        if (m.iconId) getMobImage(m.iconId);
                     });
                 }
                 renderCanvas();
                 renderTables();
             } else {
-                alert(res.message || 'Lỗi tải dữ liệu map!');
+                if (window.showModalAlert) {
+                    window.showModalAlert('Lỗi', res.message || 'Lỗi tải dữ liệu map!', 'danger');
+                } else {
+                    alert(res.message || 'Lỗi tải dữ liệu map!');
+                }
             }
         })
-        .catch(() => alert('Lỗi kết nối tới Server!'));
+        .catch(() => {
+            if (window.showModalAlert) {
+                window.showModalAlert('Lỗi kết nối', 'Không thể kết nối tới Server!', 'danger');
+            } else {
+                alert('Lỗi kết nối tới Server!');
+            }
+        });
 }
 
 function reloadMapData() {
@@ -356,38 +385,58 @@ function renderCanvas() {
         });
     }
 
-    // 5. Vẽ Quái Mob (Với Tên, Cấp và Thanh HP Bar chuẩn game)
+    // 5. Vẽ Quái Mob (Với Sprite Icon thật từ Game radar/item_template)
     if (currentMapData.mobs) {
         currentMapData.mobs.forEach((m, idx) => {
             const isSelected = (draggingEntity === idx && dragType === 'mob');
+            const iconId = m.iconId || 7466;
+            const img = getMobImage(iconId);
 
             // Đổ bóng dưới chân quái
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
             ctx.beginPath();
             ctx.ellipse(m.x, m.y, 16, 5, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Biểu tượng Token Quái
-            ctx.fillStyle = isSelected ? '#ff1744' : '#d50000';
-            ctx.beginPath();
-            ctx.arc(m.x, m.y - 18, 16, 0, Math.PI * 2);
-            ctx.fill();
+            const spriteHeight = 44;
+            const spriteY = m.y - spriteHeight;
 
-            ctx.strokeStyle = isSelected ? '#ffff00' : '#ff8a80';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            if (img && img.complete && img.naturalWidth > 0) {
+                const aspect = img.naturalWidth / img.naturalHeight;
+                const spriteWidth = Math.min(60, Math.max(28, spriteHeight * aspect));
+                const spriteX = m.x - spriteWidth / 2;
 
-            // Icon Quái 👾
-            ctx.font = '16px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('👾', m.x, m.y - 17);
+                if (isSelected) {
+                    ctx.save();
+                    ctx.shadowColor = '#ff5252';
+                    ctx.shadowBlur = 15;
+                    ctx.drawImage(img, spriteX, spriteY, spriteWidth, spriteHeight);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(img, spriteX, spriteY, spriteWidth, spriteHeight);
+                }
+            } else {
+                // Biểu tượng Token Quái fallback nếu ảnh chưa nạp xong
+                ctx.fillStyle = isSelected ? '#ff1744' : '#d50000';
+                ctx.beginPath();
+                ctx.arc(m.x, m.y - 18, 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = isSelected ? '#ffff00' : '#ff8a80';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('👾', m.x, m.y - 17);
+            }
 
             // Thanh Máu (HP Bar)
             const barW = 50;
             const barH = 5;
             const barX = m.x - barW / 2;
-            const barY = m.y - 42;
+            const barY = spriteY - 14;
 
             ctx.fillStyle = 'rgba(0,0,0,0.7)';
             ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
@@ -396,6 +445,8 @@ function renderCanvas() {
 
             // Tên Quái & Cấp
             ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
             const mobLabel = `Lv.${m.level} ${m.name || 'Quái #' + m.id}`;
             const mtw = ctx.measureText(mobLabel).width;
 
@@ -510,18 +561,18 @@ function renderTables() {
 
         nBody.innerHTML += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td>
+                <td style="text-align: center;">
                     <img src="/images/icons/${navatar}.png" onerror="this.src='/images/no_image.png'" style="width: 28px; height: 28px; object-fit: contain; background: rgba(0,0,0,0.4); border-radius: 4px; padding: 2px; vertical-align: middle;">
                 </td>
                 <td>
-                    <div style="font-weight: 700; color: #ffd700; font-size: 0.85rem;">${nname}</div>
+                    <div style="font-weight: 700; color: #ffd700; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${nname}</div>
                     <div style="color: #777; font-size: 0.72rem;">ID: #${nid}</div>
                 </td>
-                <td>
-                    <input type="number" class="form-input" style="padding: 3px 6px; font-size: 0.8rem; width: 70px; margin-bottom: 0;" value="${nx}" onchange="updateNpcCoord(${idx}, 'x', this.value)">
+                <td style="text-align: center;">
+                    <input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.8rem; width: 50px; margin-bottom: 0; text-align: center;" value="${nx}" onchange="updateNpcCoord(${idx}, 'x', this.value)">
                 </td>
-                <td>
-                    <input type="number" class="form-input" style="padding: 3px 6px; font-size: 0.8rem; width: 70px; margin-bottom: 0;" value="${ny}" onchange="updateNpcCoord(${idx}, 'y', this.value)">
+                <td style="text-align: center;">
+                    <input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.8rem; width: 50px; margin-bottom: 0; text-align: center;" value="${ny}" onchange="updateNpcCoord(${idx}, 'y', this.value)">
                 </td>
                 <td style="text-align: right;">
                     <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.75rem;" onclick="removeNpc(${idx})">×</button>
@@ -537,21 +588,25 @@ function renderTables() {
     mBody.innerHTML = '';
 
     mobs.forEach((m, idx) => {
+        const mobIcon = m.iconId || 7466;
         mBody.innerHTML += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="text-align: center;">
+                    <img src="/images/icons/${mobIcon}.png" onerror="this.src='/images/no_image.png'" style="width: 28px; height: 28px; object-fit: contain; background: rgba(0,0,0,0.4); border-radius: 4px; padding: 2px; vertical-align: middle;">
+                </td>
                 <td>
-                    <div style="font-weight: 700; color: #ff5252; font-size: 0.85rem;">${m.name || 'Quái #' + m.id}</div>
+                    <div style="font-weight: 700; color: #ff5252; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.name || 'Quái #' + m.id}</div>
                     <div style="color: #777; font-size: 0.72rem;">ID: #${m.id}</div>
                 </td>
                 <td>
                     <span style="color: #ffb74d; font-weight: 700;">Lv.${m.level}</span>
                     <div style="color: #00e676; font-size: 0.72rem;">${Number(m.hp).toLocaleString()} HP</div>
                 </td>
-                <td>
-                    <input type="number" class="form-input" style="padding: 3px 6px; font-size: 0.8rem; width: 70px; margin-bottom: 0;" value="${m.x}" onchange="updateMobCoord(${idx}, 'x', this.value)">
+                <td style="text-align: center;">
+                    <input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.8rem; width: 50px; margin-bottom: 0; text-align: center;" value="${m.x}" onchange="updateMobCoord(${idx}, 'x', this.value)">
                 </td>
-                <td>
-                    <input type="number" class="form-input" style="padding: 3px 6px; font-size: 0.8rem; width: 70px; margin-bottom: 0;" value="${m.y}" onchange="updateMobCoord(${idx}, 'y', this.value)">
+                <td style="text-align: center;">
+                    <input type="number" class="form-input" style="padding: 3px 4px; font-size: 0.8rem; width: 50px; margin-bottom: 0; text-align: center;" value="${m.y}" onchange="updateMobCoord(${idx}, 'y', this.value)">
                 </td>
                 <td style="text-align: right;">
                     <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.75rem;" onclick="removeMob(${idx})">×</button>
@@ -580,17 +635,51 @@ function updateMobCoord(idx, coord, val) {
 }
 
 function removeNpc(idx) {
-    if (!confirm('Xác nhận xóa NPC này khỏi bản đồ?')) return;
-    currentMapData.npcs.splice(idx, 1);
-    renderCanvas();
-    renderTables();
+    const npc = currentMapData.npcs[idx];
+    const name = npc.name || ('NPC #' + (npc.id !== undefined ? npc.id : npc[0]));
+    const doRemove = () => {
+        currentMapData.npcs.splice(idx, 1);
+        renderCanvas();
+        renderTables();
+        if (window.showToast) window.showToast(`Đã xóa NPC ${name}`, 'info');
+    };
+
+    if (window.showConfirm) {
+        window.showConfirm({
+            title: 'Xóa NPC Khỏi Bản Đồ',
+            message: `Bạn có chắc muốn xóa NPC <b style="color: #ffd700;">${name}</b> khỏi bản đồ?`,
+            okText: 'Xác nhận xóa',
+            cancelText: 'Từ chối',
+            isDanger: true,
+            onConfirm: doRemove
+        });
+    } else {
+        if (confirm(`Xác nhận xóa NPC ${name} khỏi bản đồ?`)) doRemove();
+    }
 }
 
 function removeMob(idx) {
-    if (!confirm('Xác nhận xóa quái này khỏi bản đồ?')) return;
-    currentMapData.mobs.splice(idx, 1);
-    renderCanvas();
-    renderTables();
+    const mob = currentMapData.mobs[idx];
+    const name = mob.name || ('Quái #' + mob.id);
+    const doRemove = () => {
+        currentMapData.mobs.splice(idx, 1);
+        renderCanvas();
+        renderTables();
+        if (window.showToast) window.showToast(`Đã xóa quái ${name}`, 'info');
+    };
+
+    if (window.showConfirm) {
+        window.showConfirm({
+            title: 'Xóa Quái Khỏi Bản Đồ',
+            message: `Bạn có chắc muốn xóa quái <b style="color: #ff5252;">${name}</b> (Lv.${mob.level}) khỏi bản đồ?`,
+            okText: 'Xác nhận xóa',
+            cancelText: 'Từ chối',
+            isDanger: true,
+            onConfirm: doRemove
+        });
+    } else {
+        if (confirm(`Xác nhận xóa quái ${name} khỏi bản đồ?`)) doRemove();
+    }
 }
 
 // -------------------------------------------------------------
@@ -632,6 +721,7 @@ function selectNpcToAdd(id, name, avatar) {
     closeAddNpcModal();
     renderCanvas();
     renderTables();
+    if (window.showToast) window.showToast(`Đã thêm NPC ${name}`, 'success');
 }
 
 function openAddMobModal() {
@@ -658,18 +748,22 @@ function filterMobTemplates() {
     });
 }
 
-function selectMobToAdd(id, name, hp) {
+function selectMobToAdd(id, name, hp, iconId) {
+    const mobIcon = iconId && iconId > 0 ? iconId : 7466;
     currentMapData.mobs.push({
         id: id,
         name: name,
         level: 1,
         hp: hp || 100,
+        iconId: mobIcon,
         x: 700,
         y: 432
     });
+    getMobImage(mobIcon);
     closeAddMobModal();
     renderCanvas();
     renderTables();
+    if (window.showToast) window.showToast(`Đã thêm quái ${name}`, 'success');
 }
 
 // -------------------------------------------------------------
@@ -753,29 +847,56 @@ canvas.addEventListener('mouseup', function() {
 // LƯU DỮ LIỆU BẢN ĐỒ VÀO DATABASE
 // -------------------------------------------------------------
 function saveMapData() {
-    if (!confirm(`Bạn có chắc muốn lưu lại tọa độ thực thể Map #${currentMapData.id} vào Database?`)) return;
-
-    fetch("{{ route('admin.map_editor.save') }}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-        },
-        body: JSON.stringify({
-            map_id: currentMapData.id,
-            npcs: currentMapData.npcs,
-            mobs: currentMapData.mobs
+    const doSave = () => {
+        fetch("{{ route('admin.map_editor.save') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            },
+            body: JSON.stringify({
+                map_id: currentMapData.id,
+                npcs: currentMapData.npcs,
+                mobs: currentMapData.mobs
+            })
         })
-    })
-    .then(r => r.json())
-    .then(res => {
-        if (res.success) {
-            alert(res.message || 'Lưu bản đồ thành công!');
-        } else {
-            alert('Lỗi: ' + (res.message || 'Không thể lưu!'));
-        }
-    })
-    .catch(() => alert('Lỗi kết nối tới Server!'));
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                if (window.showModalAlert) {
+                    window.showModalAlert('Thành công', res.message || 'Lưu cấu hình bản đồ thành công!', 'success');
+                } else {
+                    alert(res.message || 'Lưu bản đồ thành công!');
+                }
+            } else {
+                if (window.showModalAlert) {
+                    window.showModalAlert('Lỗi lưu bản đồ', res.message || 'Không thể lưu bản đồ!', 'danger');
+                } else {
+                    alert('Lỗi: ' + (res.message || 'Không thể lưu!'));
+                }
+            }
+        })
+        .catch(() => {
+            if (window.showModalAlert) {
+                window.showModalAlert('Lỗi kết nối', 'Không thể kết nối tới Server!', 'danger');
+            } else {
+                alert('Lỗi kết nối tới Server!');
+            }
+        });
+    };
+
+    if (window.showConfirm) {
+        window.showConfirm({
+            title: 'Lưu Dữ Liệu Bản Đồ',
+            message: `Bạn có chắc muốn lưu lại tọa độ và danh sách NPC/Quái của Map <b style="color: #00e5ff;">#${currentMapData.id} - ${currentMapData.name || ''}</b> vào Database?`,
+            okText: 'Đồng ý lưu',
+            cancelText: 'Từ chối',
+            isDanger: false,
+            onConfirm: doSave
+        });
+    } else {
+        if (confirm(`Bạn có chắc muốn lưu lại tọa độ thực thể Map #${currentMapData.id} vào Database?`)) doSave();
+    }
 }
 
 // Khởi chạy khi load trang
