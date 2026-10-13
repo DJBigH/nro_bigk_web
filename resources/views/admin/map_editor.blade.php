@@ -59,13 +59,13 @@
         </div>
     </div>
 
-    <div style="position: relative; overflow-x: auto; background: #000; border-radius: 8px; border: 2px solid #1a2744; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
-        <canvas id="mapCanvas" width="1400" height="520" style="display: block; width: 1400px; height: 520px; cursor: crosshair;">
+    <div id="canvasContainer" style="position: relative; overflow-x: auto; overflow-y: hidden; background: #000; border-radius: 8px; border: 2px solid #1a2744; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); max-height: 700px;">
+        <canvas id="mapCanvas" width="1400" height="560" style="display: block; cursor: crosshair;">
         </canvas>
     </div>
-    <div style="font-size: 0.8rem; color: #888; margin-top: 8px; display: flex; justify-content: space-between;">
-        <span>* Kéo thanh cuộn ngang nếu bản đồ dài hơn màn hình. Độ phân giải chuẩn: 1400 x 520 px.</span>
-        <span>Mặt đất nền NRO mặc định ở cao độ Y: 430 - 435.</span>
+    <div style="font-size: 0.8rem; color: #888; margin-top: 8px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <span>* Kéo thanh cuộn ngang nếu bản đồ dài. Kích thước bản đồ chuẩn: <b id="mapDimLabel" style="color: #00e5ff;">1400 x 560 px</b>.</span>
+        <span>Địa hình Platform & NPC/Quái được tái hiện chính xác 100% từ dữ liệu bản đồ thật (tile_map_data).</span>
     </div>
 </div>
 
@@ -258,6 +258,18 @@ function loadSelectedMap() {
         .then(res => {
             if (res.success) {
                 currentMapData = res.map;
+
+                // 1. Cập nhật kích thước Canvas chính xác theo bản đồ game
+                const mapW = currentMapData.width || 1400;
+                const mapH = Math.max(560, currentMapData.height || 560);
+                canvas.width = mapW;
+                canvas.height = mapH;
+                canvas.style.width = mapW + 'px';
+                canvas.style.height = mapH + 'px';
+
+                const dimLabel = document.getElementById('mapDimLabel');
+                if (dimLabel) dimLabel.innerText = `${mapW} x ${mapH} px`;
+
                 const bgId = currentMapData.bg_id !== undefined ? currentMapData.bg_id : 0;
                 // Preload các layer background thật từ game NRO
                 for (let l = 0; l <= 4; l++) {
@@ -303,76 +315,93 @@ function reloadMapData() {
 // -------------------------------------------------------------
 function renderCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const groundY = 430;
     const bgId = currentMapData.bg_id !== undefined ? currentMapData.bg_id : 0;
     const planetId = currentMapData.planet_id !== undefined ? currentMapData.planet_id : 0;
+    const tileId = currentMapData.tile_id !== undefined ? currentMapData.tile_id : 1;
 
-    // 1. Vẽ bầu trời nền theo hành tinh (Sky Gradient)
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
+    // 1. Vẽ bầu trời nền bao trọn canvas theo hành tinh (Sky Gradient)
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     if (planetId === 1) {
         // Namếc (Xanh ngọc / lục lam)
         skyGrad.addColorStop(0, '#042f2e');
-        skyGrad.addColorStop(0.5, '#0f766e');
-        skyGrad.addColorStop(1, '#14b8a6');
+        skyGrad.addColorStop(0.4, '#0f766e');
+        skyGrad.addColorStop(0.8, '#14b8a6');
+        skyGrad.addColorStop(1, '#0d9488');
     } else if (planetId === 2) {
         // Xayda (Hoàng hôn đỏ quạch / cằn cỗi)
-        skyGrad.addColorStop(0, '#450a0a');
-        skyGrad.addColorStop(0.5, '#7f1d1d');
-        skyGrad.addColorStop(1, '#b91c1c');
+        skyGrad.addColorStop(0, '#3f0a0a');
+        skyGrad.addColorStop(0.4, '#7f1d1d');
+        skyGrad.addColorStop(0.8, '#b91c1c');
+        skyGrad.addColorStop(1, '#991b1b');
     } else {
-        // Trái Đất (Xanh lam tươi sáng)
+        // Trái Đất (Xanh lam tươi sáng / Biển trời Đảo Kamê)
         skyGrad.addColorStop(0, '#0c4a6e');
-        skyGrad.addColorStop(0.5, '#0284c7');
-        skyGrad.addColorStop(1, '#7dd3fc');
+        skyGrad.addColorStop(0.4, '#0284c7');
+        skyGrad.addColorStop(0.8, '#7dd3fc');
+        skyGrad.addColorStop(1, '#bae6fd');
     }
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, canvas.width, groundY);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Vẽ các layer Background NRO thật từ game (x2b{bgId}0, x2b{bgId}1, x2b{bgId}2, x2b{bgId}3)
-    // Layer 0: Bầu trời xa / Dãy núi xa (tile lặp ngang)
+    // 2. Tính toán đường chân trời tự nhiên từ địa hình thực tế
+    let horizonY = Math.round(canvas.height * 0.72);
+    if (currentMapData.platforms && currentMapData.platforms.length > 0) {
+        const groundYs = currentMapData.platforms.map(p => p.y).filter(y => y > canvas.height * 0.35);
+        if (groundYs.length > 0) {
+            horizonY = Math.max(...groundYs);
+        }
+    }
+
+    // 3. Vẽ các layer Background NRO thật từ game (x2b{bgId}0, x2b{bgId}1, x2b{bgId}2, x2b{bgId}3)
+    // Layer 0: Bầu trời xa / Biển xa / Dãy núi chân trời
     const bg0 = getMapBgImage(bgId, 0);
     if (bg0 && bg0.complete && bg0.naturalWidth > 0) {
-        const bgH = Math.min(280, groundY - 40);
-        const bgW = bg0.naturalWidth * (bgH / bg0.naturalHeight);
-        for (let x = 0; x < canvas.width; x += bgW) {
-            ctx.drawImage(bg0, x, groundY - bgH, bgW, bgH);
+        const scale0 = Math.max(1.8, (horizonY - 20) / bg0.naturalHeight);
+        const bgW0 = bg0.naturalWidth * scale0;
+        const bgH0 = bg0.naturalHeight * scale0;
+        const startY0 = Math.max(0, horizonY - bgH0);
+        for (let x = 0; x < canvas.width; x += bgW0) {
+            ctx.drawImage(bg0, x, startY0, bgW0, bgH0);
         }
     }
 
     // Layer 1: Đồi núi / Nhà cửa trung cảnh (nếu có)
     const bg1 = getMapBgImage(bgId, 1);
     if (bg1 && bg1.complete && bg1.naturalWidth > 0) {
-        const scale = 1.25;
-        const bgW = bg1.naturalWidth * scale;
-        const bgH = bg1.naturalHeight * scale;
-        for (let x = 0; x < canvas.width; x += bgW) {
-            ctx.drawImage(bg1, x, groundY - bgH + 15, bgW, bgH);
+        const scale1 = 1.35;
+        const bgW1 = bg1.naturalWidth * scale1;
+        const bgH1 = bg1.naturalHeight * scale1;
+        const startY1 = horizonY - bgH1 + 10;
+        for (let x = 0; x < canvas.width; x += bgW1) {
+            ctx.drawImage(bg1, x, startY1, bgW1, bgH1);
         }
     }
 
-    // Layer 2: Cây cối / Khung cảnh làng mạc cận cảnh (nếu có)
+    // Layer 2: Cây cối / Khung cảnh cận cảnh (nếu có)
     const bg2 = getMapBgImage(bgId, 2);
     if (bg2 && bg2.complete && bg2.naturalWidth > 0) {
-        const scale = 1.1;
-        const bgW = bg2.naturalWidth * scale;
-        const bgH = bg2.naturalHeight * scale;
-        for (let x = 0; x < canvas.width; x += bgW) {
-            ctx.drawImage(bg2, x, groundY - bgH + 8, bgW, bgH);
+        const scale2 = 1.2;
+        const bgW2 = bg2.naturalWidth * scale2;
+        const bgH2 = bg2.naturalHeight * scale2;
+        const startY2 = horizonY - bgH2 + 15;
+        for (let x = 0; x < canvas.width; x += bgW2) {
+            ctx.drawImage(bg2, x, startY2, bgW2, bgH2);
         }
     }
 
     // Layer 3: Chi tiết phụ
     const bg3 = getMapBgImage(bgId, 3);
     if (bg3 && bg3.complete && bg3.naturalWidth > 0) {
-        const scale = 1.0;
-        const bgW = bg3.naturalWidth * scale;
-        const bgH = bg3.naturalHeight * scale;
-        for (let x = 0; x < canvas.width; x += bgW) {
-            ctx.drawImage(bg3, x, groundY - bgH, bgW, bgH);
+        const scale3 = 1.0;
+        const bgW3 = bg3.naturalWidth * scale3;
+        const bgH3 = bg3.naturalHeight * scale3;
+        const startY3 = horizonY - bgH3;
+        for (let x = 0; x < canvas.width; x += bgW3) {
+            ctx.drawImage(bg3, x, startY3, bgW3, bgH3);
         }
     }
 
-    // 3. Lưới tọa độ nhẹ trên nền
+    // 4. Lưới tọa độ nhẹ trên nền
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += 100) {
@@ -396,64 +425,111 @@ function renderCanvas() {
         ctx.fillText(y, 4, y - 2);
     }
 
-    // 4. Vẽ Mặt Đất 2D Platformer (Y = 430) theo Hành Tinh
-    let grassColor = '#4caf50';
-    let grassDark = '#2e7d32';
-    let soilStart = '#3e2723';
-    let soilEnd = '#150d0b';
+    // 5. Thiết lập Phong Cách Địa Hình Chuẩn Theo Tile & Hành Tinh NRO
+    let topColor = '#4caf50';      // Mặt cỏ tươi Trái Đất
+    let topColorDark = '#2e7d32';
+    let bodyColorStart = '#4e342e'; // Lòng đất Trái Đất
+    let bodyColorEnd = '#1b120c';
+    let platGlow = '#4caf50';
+    let terrainType = 'grass';
 
-    if (planetId === 1) {
-        // Namếc
-        grassColor = '#10b981';
-        grassDark = '#047857';
-        soilStart = '#134e4a';
-        soilEnd = '#022c22';
-    } else if (planetId === 2) {
-        // Xayda
-        grassColor = '#b45309';
-        grassDark = '#78350f';
-        soilStart = '#450a0a';
-        soilEnd = '#1c0505';
+    if (tileId === 3) {
+        // Đảo Kamê / Biển (Bờ cát vàng & Đá biển)
+        terrainType = 'sand';
+        topColor = '#ffd54f';
+        topColorDark = '#ffb300';
+        bodyColorStart = '#8d6e63';
+        bodyColorEnd = '#4e342e';
+        platGlow = '#ffd54f';
+    } else if (planetId === 1 || tileId === 2) {
+        // Namếc (Rêu ngọc bích & Đá cẩm thạch)
+        terrainType = 'namek';
+        topColor = '#10b981';
+        topColorDark = '#047857';
+        bodyColorStart = '#134e4a';
+        bodyColorEnd = '#042f2e';
+        platGlow = '#10b981';
+    } else if (planetId === 2 || tileId === 4) {
+        // Xayda (Nham thạch & Đá đỏ bazan)
+        terrainType = 'xayda';
+        topColor = '#f97316';
+        topColorDark = '#c2410c';
+        bodyColorStart = '#450a0a';
+        bodyColorEnd = '#1a0505';
+        platGlow = '#f97316';
+    } else if (tileId === 5) {
+        // Hang động / Lòng đất tối
+        terrainType = 'cave';
+        topColor = '#78909c';
+        topColorDark = '#455a64';
+        bodyColorStart = '#263238';
+        bodyColorEnd = '#10171d';
+        platGlow = '#90a4ae';
     }
 
-    // Lòng đất
-    const earthGrad = ctx.createLinearGradient(0, groundY, 0, canvas.height);
-    earthGrad.addColorStop(0, soilStart);
-    earthGrad.addColorStop(1, soilEnd);
-    ctx.fillStyle = earthGrad;
-    ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+    // A. Vẽ khối đất/đá thực sự (Solid Blocks) từ tile_map_data
+    if (currentMapData.blocks && currentMapData.blocks.length > 0) {
+        currentMapData.blocks.forEach(b => {
+            const bGrad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+            bGrad.addColorStop(0, bodyColorStart);
+            bGrad.addColorStop(1, bodyColorEnd);
+            ctx.fillStyle = bGrad;
+            ctx.fillRect(b.x, b.y, b.w, b.h);
 
-    // Dải đá sọc trong lòng đất
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    for (let x = 0; x < canvas.width; x += 60) {
-        ctx.fillRect(x + (x % 40), groundY + 25, 30, 8);
-        ctx.fillRect(x + 15, groundY + 55, 20, 6);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(b.x, b.y, b.w, b.h);
+        });
     }
 
-    // Dải cỏ bề mặt (Grass strip)
-    ctx.fillStyle = grassColor;
-    ctx.fillRect(0, groundY, canvas.width, 8);
+    // B. Vẽ các bề mặt đứng được (Walkable Platforms) chuẩn xác 100%
+    if (currentMapData.platforms && currentMapData.platforms.length > 0) {
+        currentMapData.platforms.forEach(p => {
+            const pw = p.x2 - p.x1;
 
-    ctx.fillStyle = grassDark;
-    ctx.fillRect(0, groundY + 8, canvas.width, 6);
+            // Dải bề mặt địa hình (Mặt cỏ / Bờ cát / Rêu đá)
+            ctx.fillStyle = topColor;
+            ctx.fillRect(p.x1, p.y, pw, 5);
 
-    // Ngọn cỏ nhô lên
-    ctx.fillStyle = grassColor;
-    for (let x = 0; x < canvas.width; x += 12) {
-        ctx.beginPath();
-        ctx.moveTo(x, groundY);
-        ctx.lineTo(x + 4, groundY - 6);
-        ctx.lineTo(x + 8, groundY);
-        ctx.fill();
+            ctx.fillStyle = topColorDark;
+            ctx.fillRect(p.x1, p.y + 5, pw, 3);
+
+            // Chi tiết bề mặt tự nhiên (ngọn cỏ hoặc hạt cát / đá gồ ghề)
+            if (terrainType === 'sand') {
+                ctx.fillStyle = '#ffe082';
+                ctx.fillRect(p.x1, p.y, pw, 2);
+            } else if (terrainType === 'grass' || terrainType === 'namek') {
+                ctx.fillStyle = topColor;
+                for (let gx = p.x1 + 4; gx < p.x2 - 4; gx += 8) {
+                    ctx.beginPath();
+                    ctx.moveTo(gx, p.y);
+                    ctx.lineTo(gx + 3, p.y - 4);
+                    ctx.lineTo(gx + 6, p.y);
+                    ctx.fill();
+                }
+            } else if (terrainType === 'xayda') {
+                ctx.fillStyle = '#fca5a5';
+                for (let gx = p.x1 + 6; gx < p.x2 - 6; gx += 16) {
+                    ctx.fillRect(gx, p.y - 1, 6, 2);
+                }
+            }
+
+            // Đường ranh giới bề mặt phát sáng nhẹ giúp Admin dễ canh tọa độ
+            ctx.strokeStyle = platGlow;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p.x1, p.y);
+            ctx.lineTo(p.x2, p.y);
+            ctx.stroke();
+        });
+    } else {
+        // Fallback mặt đất nếu map không có file tile_map_data
+        const fallbackY = Math.round(canvas.height * 0.75);
+        ctx.fillStyle = bodyColorStart;
+        ctx.fillRect(0, fallbackY, canvas.width, canvas.height - fallbackY);
+        ctx.fillStyle = topColor;
+        ctx.fillRect(0, fallbackY, canvas.width, 6);
     }
-
-    // Đường ranh giới mặt đất Y=430 phát sáng
-    ctx.strokeStyle = grassColor;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, groundY);
-    ctx.lineTo(canvas.width, groundY);
-    ctx.stroke();
 
     // 4. Vẽ Cổng Dịch Chuyển (Waypoints)
     if (currentMapData.waypoints) {

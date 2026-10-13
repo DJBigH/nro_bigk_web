@@ -1572,6 +1572,90 @@ class AdminController extends Controller
                 }
             }
 
+            // 4. Parse Real Map Tile Platforms & Dimensions
+            $mapWidth = 1400;
+            $mapHeight = 600;
+            $platforms = [];
+            $tileDataPath = storage_path("app/tile_map_data/{$mapId}");
+            if (!file_exists($tileDataPath)) {
+                $tileDataPath = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/map/tile_map_data/{$mapId}";
+            }
+
+            if (file_exists($tileDataPath)) {
+                $raw = file_get_contents($tileDataPath);
+                if (strlen($raw) >= 2) {
+                    $tw = ord($raw[0]);
+                    $th = ord($raw[1]);
+                    $mapWidth = max(1400, $tw * 24);
+                    $mapHeight = max(560, $th * 24);
+
+                    $tiles = [];
+                    $offset = 2;
+                    for ($y = 0; $y < $th; $y++) {
+                        for ($x = 0; $x < $tw; $x++) {
+                            if ($offset < strlen($raw)) {
+                                $tiles[$y][$x] = ord($raw[$offset++]);
+                            } else {
+                                $tiles[$y][$x] = 0;
+                            }
+                        }
+                    }
+
+                    $blocks = [];
+                    // Extract solid blocks and top walkable platform edges
+                    for ($y = 0; $y < $th; $y++) {
+                        $currentSeg = null;
+                        $blockStart = null;
+                        for ($x = 0; $x < $tw; $x++) {
+                            $isSolid = ($tiles[$y][$x] > 0);
+
+                            // Solid blocks (for drawing real game terrain mesh)
+                            if ($isSolid) {
+                                if ($blockStart === null) {
+                                    $blockStart = $x;
+                                }
+                            } else {
+                                if ($blockStart !== null) {
+                                    $blocks[] = [
+                                        'x' => $blockStart * 24,
+                                        'y' => $y * 24,
+                                        'w' => ($x - $blockStart) * 24,
+                                        'h' => 24
+                                    ];
+                                    $blockStart = null;
+                                }
+                            }
+
+                            // Walkable platform top edges (exclude ceiling at row 0)
+                            $isTop = $isSolid && ($y > 0) && ($tiles[$y - 1][$x] == 0);
+                            if ($isTop) {
+                                if ($currentSeg === null) {
+                                    $currentSeg = ['y' => $y * 24, 'x1' => $x * 24, 'x2' => ($x + 1) * 24];
+                                } else {
+                                    $currentSeg['x2'] = ($x + 1) * 24;
+                                }
+                            } else {
+                                if ($currentSeg !== null) {
+                                    $platforms[] = $currentSeg;
+                                    $currentSeg = null;
+                                }
+                            }
+                        }
+                        if ($blockStart !== null) {
+                            $blocks[] = [
+                                'x' => $blockStart * 24,
+                                'y' => $y * 24,
+                                'w' => ($tw - $blockStart) * 24,
+                                'h' => 24
+                            ];
+                        }
+                        if ($currentSeg !== null) {
+                            $platforms[] = $currentSeg;
+                        }
+                    }
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'map' => [
@@ -1581,6 +1665,10 @@ class AdminController extends Controller
                     'bg_id' => (int)($map->bg_id ?? 0),
                     'bg_type' => (int)($map->bg_type ?? 0),
                     'tile_id' => (int)($map->tile_id ?? 1),
+                    'width' => $mapWidth,
+                    'height' => $mapHeight,
+                    'blocks' => $blocks,
+                    'platforms' => $platforms,
                     'npcs' => $npcs,
                     'mobs' => $mobs,
                     'waypoints' => $waypoints

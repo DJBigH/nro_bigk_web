@@ -1,3 +1,5 @@
 *
 !public/
+!tile_map_data/
+!tile_map_data/**
 !.gitignore
