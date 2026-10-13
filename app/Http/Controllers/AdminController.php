@@ -53,6 +53,30 @@ class AdminController extends Controller
     }
 
     /**
+     * Realtime Dashboard stats polling API.
+     */
+    public function dashboardData()
+    {
+        $serverStats = $this->callGameApi('/api/server/stats', [], 'GET');
+
+        $stats = [
+            'total_users' => Account::count(),
+            'server_online' => $serverStats['success'] ?? false,
+            'online_count' => $serverStats['online_count'] ?? 0,
+            'used_memory_mb' => $serverStats['used_memory_mb'] ?? 0,
+            'max_memory_mb' => $serverStats['max_memory_mb'] ?? 0,
+            'total_giftcodes' => GiftCode::count(),
+            'rate_exp' => $serverStats['rate_exp'] ?? 2,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'stats' => $stats,
+            'players' => $serverStats['players'] ?? []
+        ]);
+    }
+
+    /**
      * Players and Accounts management.
      */
     public function players(Request $request)
@@ -251,6 +275,50 @@ class AdminController extends Controller
         );
 
         return view('admin.bosses', compact('bosses', 'allBosses', 'statusFilter', 'perPage'));
+    }
+
+    /**
+     * Realtime Boss data polling API.
+     */
+    public function bossesData(Request $request)
+    {
+        $res = $this->callGameApi('/api/boss/list', [], 'GET');
+        $allBosses = $res['bosses'] ?? [];
+        $statusFilter = $request->input('status', 'all');
+
+        $filteredBosses = $allBosses;
+        if ($statusFilter === 'live') {
+            $filteredBosses = array_values(array_filter($allBosses, function($b) {
+                return ($b['status'] ?? 'LIVE') === 'LIVE';
+            }));
+        } elseif ($statusFilter === 'die') {
+            $filteredBosses = array_values(array_filter($allBosses, function($b) {
+                return ($b['status'] ?? 'LIVE') !== 'LIVE';
+            }));
+        }
+
+        $perPage = $this->getPerPage($request, 5);
+        $currentPage = (int) $request->input('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $items = array_slice($filteredBosses, $offset, $perPage);
+
+        $liveCount = 0;
+        $dieCount = 0;
+        foreach ($allBosses as $b) {
+            if (($b['status'] ?? 'LIVE') === 'LIVE') $liveCount++;
+            else $dieCount++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'bosses' => $items,
+            'total' => count($filteredBosses),
+            'liveCount' => $liveCount,
+            'dieCount' => $dieCount,
+            'totalCount' => count($allBosses),
+            'currentPage' => $currentPage,
+            'lastPage' => (int) ceil(count($filteredBosses) / $perPage)
+        ]);
     }
 
     public function bossSpawn(Request $request)

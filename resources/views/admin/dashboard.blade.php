@@ -3,12 +3,14 @@
 @section('title', 'Trung Tâm Điều Khiển Quản Trị - NRO BigK')
 
 @section('admin_content')
-<div class="card" style="margin-bottom: 25px; border-left: 4px solid var(--primary); display: flex; justify-content: space-between; align-items: center;">
+<div class="card" style="margin-bottom: 25px; border-left: 4px solid var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
     <div>
-        <h2 style="color: var(--primary); font-size: 1.4rem;">TRUNG TÂM ĐIỀU KHIỂN QUẢN TRỊ VIÊN (CYBER ADMIN)</h2>
+        <h2 style="color: var(--primary); font-size: 1.4rem; display: flex; align-items: center; gap: 8px;">
+            ⚡ TRUNG TÂM ĐIỀU KHIỂN QUẢN TRỊ VIÊN (CYBER ADMIN)
+        </h2>
         <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">Giám sát hệ thống & Điều khiển Game Server Realtime (Cổng RAM 14446).</p>
     </div>
-    <div>
+    <div id="serverStatusBadge">
         @if($stats['server_online'])
             <span class="badge badge-success" style="font-size: 0.95rem; padding: 8px 14px; font-weight: 700;">🟢 GAME SERVER: ONLINE</span>
         @else
@@ -21,25 +23,27 @@
 <div class="summary-grid" style="grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px;">
     <div class="card summary-card">
         <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Người Chơi Online (RAM)</div>
-        <div class="summary-val" style="color: #00e676;">{{ number_format($stats['online_count']) }}</div>
+        <div class="summary-val" id="onlineCountVal" style="color: #00e676;">{{ number_format($stats['online_count']) }}</div>
         <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">Đang kết nối trực tiếp</div>
     </div>
     
     <div class="card summary-card">
         <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">RAM Máy Chủ Sử Dụng</div>
-        <div class="summary-val" style="color: #00bcd4;">{{ $stats['used_memory_mb'] }} <span style="font-size: 1rem; color: #888;">/ {{ $stats['max_memory_mb'] }} MB</span></div>
+        <div class="summary-val" id="memoryUsageVal" style="color: #00bcd4;">
+            {{ $stats['used_memory_mb'] }} <span style="font-size: 1rem; color: #888;">/ {{ $stats['max_memory_mb'] }} MB</span>
+        </div>
         <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">JVM Heap Memory</div>
     </div>
     
     <div class="card summary-card">
         <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Tổng Tài Khoản</div>
-        <div class="summary-val" style="color: var(--primary);">{{ number_format($stats['total_users']) }}</div>
+        <div class="summary-val" id="totalUsersVal" style="color: var(--primary);">{{ number_format($stats['total_users']) }}</div>
         <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">Đăng ký trong DB</div>
     </div>
     
     <div class="card summary-card">
         <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Gift Code Khả Dụng</div>
-        <div class="summary-val" style="color: #ff9800;">{{ number_format($stats['total_giftcodes']) }}</div>
+        <div class="summary-val" id="giftCodesVal" style="color: #ff9800;">{{ number_format($stats['total_giftcodes']) }}</div>
         <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">Thỏi Vàng & Hồng Ngọc</div>
     </div>
 </div>
@@ -111,15 +115,19 @@
 
 <!-- Realtime Online Players Table -->
 <div class="card" style="padding: 0; margin-bottom: 25px;">
-    <div style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="color: #fff; font-size: 1.1rem; margin: 0;">DANH SÁCH NGƯỜI CHƠI ĐANG ONLINE TRONG RAM</h3>
-        <span style="color: #00e676; font-size: 0.9rem; font-weight: 700;">{{ $stats['online_count'] }} Người chơi</span>
+    <div style="padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <h3 style="color: #fff; font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+            🎮 DANH SÁCH NGƯỜI CHƠI ĐANG ONLINE TRONG RAM
+        </h3>
+        <span id="playersHeaderCount" style="color: #00e676; font-size: 0.9rem; font-weight: 700;">{{ $stats['online_count'] }} Người chơi</span>
     </div>
 
-    @if(empty($serverStats['players']))
-        <p style="padding: 25px; text-align: center; color: var(--text-muted);">Hiện không có người chơi nào đang kết nối hoặc Game Server đang tắt.</p>
-    @else
-        <table style="margin-top: 0;">
+    <div id="noPlayersMsg" style="display: {{ empty($serverStats['players']) ? 'block' : 'none' }}; padding: 25px; text-align: center; color: var(--text-muted);">
+        Hiện không có người chơi nào đang kết nối hoặc Game Server đang tắt.
+    </div>
+
+    <div id="playersTableContainer" style="display: {{ empty($serverStats['players']) ? 'none' : 'block' }}; width: 100%; overflow-x: auto;">
+        <table style="margin-top: 0; width: 100%;">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -131,28 +139,116 @@
                     <th>Map / Khu</th>
                 </tr>
             </thead>
-            <tbody>
-                @foreach($serverStats['players'] as $p)
-                    <tr>
-                        <td style="font-family: 'Orbitron', sans-serif;">{{ $p['id'] }}</td>
-                        <td style="font-weight: 700; color: #00e676;">{{ $p['name'] }}</td>
-                        <td style="color: #fff;">{{ $p['username'] }}</td>
-                        <td style="font-family: 'Orbitron', sans-serif; color: #ffb74d;">{{ number_format($p['power']) }}</td>
-                        <td style="font-family: 'Orbitron', sans-serif; color: #ff5252;">{{ number_format($p['hpMax']) }}</td>
-                        <td style="color: #e91e63; font-weight: 700;">{{ number_format($p['ruby']) }} 💎</td>
-                        <td>Map {{ $p['mapId'] }} - Khu {{ $p['zoneId'] }}</td>
-                    </tr>
-                @endforeach
+            <tbody id="playersTableBody">
+                @if(!empty($serverStats['players']))
+                    @foreach($serverStats['players'] as $p)
+                        <tr>
+                            <td style="font-family: 'Orbitron', sans-serif;">{{ $p['id'] }}</td>
+                            <td style="font-weight: 700; color: #00e676;">{{ $p['name'] }}</td>
+                            <td style="color: #fff;">{{ $p['username'] }}</td>
+                            <td style="font-family: 'Orbitron', sans-serif; color: #ffb74d;">{{ number_format($p['power']) }}</td>
+                            <td style="font-family: 'Orbitron', sans-serif; color: #ff5252;">{{ number_format($p['hpMax']) }}</td>
+                            <td style="color: #e91e63; font-weight: 700;">{{ number_format($p['ruby']) }} 💎</td>
+                            <td>Map {{ $p['mapId'] }} - Khu {{ $p['zoneId'] }}</td>
+                        </tr>
+                    @endforeach
+                @endif
             </tbody>
         </table>
-    @endif
+    </div>
 </div>
 
 <script>
-document.getElementById('notifyForm').addEventListener('submit', function(e) {
+// -------------------------------------------------------------
+// REALTIME POLLING: Cập nhật tổng quan và RAM người chơi không cần F5
+// -------------------------------------------------------------
+function pollDashboardData() {
+    fetch('{{ route("admin.dashboard.data") }}')
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) return;
+            const s = res.stats;
+
+            // 1. Cập nhật Server Status Badge
+            const badgeEl = document.getElementById('serverStatusBadge');
+            if (badgeEl) {
+                if (s.server_online) {
+                    badgeEl.innerHTML = '<span class="badge badge-success" style="font-size: 0.95rem; padding: 8px 14px; font-weight: 700;">🟢 GAME SERVER: ONLINE</span>';
+                } else {
+                    badgeEl.innerHTML = '<span class="badge badge-danger" style="font-size: 0.95rem; padding: 8px 14px; font-weight: 700;">🔴 GAME SERVER: OFFLINE</span>';
+                }
+            }
+
+            // 2. Cập nhật 4 thẻ Metrics
+            const onlineCountEl = document.getElementById('onlineCountVal');
+            if (onlineCountEl) onlineCountEl.innerText = Number(s.online_count || 0).toLocaleString();
+
+            const memEl = document.getElementById('memoryUsageVal');
+            if (memEl) memEl.innerHTML = `${s.used_memory_mb || 0} <span style="font-size: 1rem; color: #888;">/ ${s.max_memory_mb || 0} MB</span>`;
+
+            const usersEl = document.getElementById('totalUsersVal');
+            if (usersEl) usersEl.innerText = Number(s.total_users || 0).toLocaleString();
+
+            const codesEl = document.getElementById('giftCodesVal');
+            if (codesEl) codesEl.innerText = Number(s.total_giftcodes || 0).toLocaleString();
+
+            // 3. Cập nhật Danh sách người chơi online
+            const headerCount = document.getElementById('playersHeaderCount');
+            if (headerCount) headerCount.innerText = `${s.online_count || 0} Người chơi`;
+
+            const players = res.players || [];
+            const noMsg = document.getElementById('noPlayersMsg');
+            const tblCont = document.getElementById('playersTableContainer');
+            const tbody = document.getElementById('playersTableBody');
+
+            if (players.length === 0) {
+                if (noMsg) noMsg.style.display = 'block';
+                if (tblCont) tblCont.style.display = 'none';
+                if (tbody) tbody.innerHTML = '';
+            } else {
+                if (noMsg) noMsg.style.display = 'none';
+                if (tblCont) tblCont.style.display = 'block';
+                if (tbody) {
+                    let html = '';
+                    players.forEach(p => {
+                        html += `
+                            <tr>
+                                <td style="font-family: 'Orbitron', sans-serif;">${p.id}</td>
+                                <td style="font-weight: 700; color: #00e676;">${p.name}</td>
+                                <td style="color: #fff;">${p.username}</td>
+                                <td style="font-family: 'Orbitron', sans-serif; color: #ffb74d;">${Number(p.power || 0).toLocaleString()}</td>
+                                <td style="font-family: 'Orbitron', sans-serif; color: #ff5252;">${Number(p.hpMax || 0).toLocaleString()}</td>
+                                <td style="color: #e91e63; font-weight: 700;">${Number(p.ruby || 0).toLocaleString()} 💎</td>
+                                <td>Map ${p.mapId} - Khu ${p.zoneId}</td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
+            }
+        })
+        .catch(() => {});
+}
+
+// Bắt đầu cập nhật realtime mỗi 2.5 giây
+setInterval(pollDashboardData, 2500);
+
+// -------------------------------------------------------------
+// XỬ LÝ ACTIONS VỚI CYBERPUNK POPUP CONFIRMATION
+// -------------------------------------------------------------
+document.getElementById('notifyForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const msg = document.getElementById('notifyMessage').value;
+    const msg = document.getElementById('notifyMessage').value.trim();
     if (!msg) return;
+
+    const confirmed = await window.showConfirm({
+        title: 'BẮN THÔNG BÁO TOÀN SERVER',
+        message: `Bạn có chắc muốn gửi thông báo:<br><b style="color: #ffd700;">"${msg}"</b><br>trực tiếp tới toàn bộ người chơi đang trong game?`,
+        okText: 'Gửi thông báo',
+        cancelText: 'Từ chối',
+        isDanger: false
+    });
+    if (!confirmed) return;
 
     fetch('{{ route("admin.server.notify") }}', {
         method: 'POST',
@@ -163,17 +259,25 @@ document.getElementById('notifyForm').addEventListener('submit', function(e) {
         body: JSON.stringify({ message: msg })
     })
     .then(r => r.json())
-    .then(d => {
-        alert(d.message);
+    .then(async d => {
+        await window.showModalAlert('KẾT QUẢ', d.message || 'Đã gửi thông báo thành công!', d.success ? 'success' : 'error');
         if (d.success) document.getElementById('notifyMessage').value = '';
     })
-    .catch(() => alert('Lỗi kết nối máy chủ'));
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối máy chủ Game!', 'error'));
 });
 
-document.getElementById('maintenanceForm').addEventListener('submit', function(e) {
+document.getElementById('maintenanceForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const sec = document.getElementById('maintenanceSeconds').value;
-    if (!confirm('Bạn có chắc chắn muốn kích hoạt bảo trì đếm ngược ' + sec + ' giây không?')) return;
+
+    const confirmed = await window.showConfirm({
+        title: 'KÍCH HOẠT BẢO TRÌ ĐẾM NGƯỢC',
+        message: `Cảnh báo: Hành động này sẽ bắt đầu đếm ngược <strong style="color: #ff5252;">${sec} giây</strong>, tự động lưu dữ liệu toàn bộ tài khoản và đóng server. Tiếp tục?`,
+        okText: 'Xác nhận bảo trì',
+        cancelText: 'Hủy bỏ',
+        isDanger: true
+    });
+    if (!confirmed) return;
 
     fetch('{{ route("admin.server.maintenance") }}', {
         method: 'POST',
@@ -184,13 +288,24 @@ document.getElementById('maintenanceForm').addEventListener('submit', function(e
         body: JSON.stringify({ seconds: parseInt(sec) })
     })
     .then(r => r.json())
-    .then(d => alert(d.message))
-    .catch(() => alert('Lỗi kết nối máy chủ'));
+    .then(async d => {
+        await window.showModalAlert('BẢO TRÌ', d.message || 'Đã bắt đầu đếm ngược bảo trì!', d.success ? 'success' : 'error');
+    })
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối máy chủ Game!', 'error'));
 });
 
-document.getElementById('expForm').addEventListener('submit', function(e) {
+document.getElementById('expForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const rate = document.getElementById('expRange').value;
+
+    const confirmed = await window.showConfirm({
+        title: 'ĐỔI TỈ LỆ EXP SERVER',
+        message: `Bạn có muốn áp dụng ngay hệ số kinh nghiệm <strong style="color: #00e676;">x${rate}</strong> cho toàn bộ người chơi không?`,
+        okText: 'Đồng ý áp dụng',
+        cancelText: 'Từ chối',
+        isDanger: false
+    });
+    if (!confirmed) return;
 
     fetch('{{ route("admin.server.config") }}', {
         method: 'POST',
@@ -201,8 +316,10 @@ document.getElementById('expForm').addEventListener('submit', function(e) {
         body: JSON.stringify({ rate_exp: parseInt(rate) })
     })
     .then(r => r.json())
-    .then(d => alert(d.message))
-    .catch(() => alert('Lỗi kết nối máy chủ'));
+    .then(async d => {
+        await window.showModalAlert('HỆ SỐ EXP', d.message || 'Đã cập nhật tỉ lệ EXP thành công!', d.success ? 'success' : 'error');
+    })
+    .catch(() => window.showModalAlert('LỖI', 'Lỗi kết nối máy chủ Game!', 'error'));
 });
 </script>
 @endsection

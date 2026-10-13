@@ -69,6 +69,7 @@ Route::get('/admin', function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('index');
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard/data', [AdminController::class, 'dashboardData'])->name('dashboard.data');
     Route::get('/players', [AdminController::class, 'players'])->name('players');
     Route::post('/players/{id}/ban', [AdminController::class, 'banPlayer'])->name('players.ban');
     Route::post('/players/{id}/unban', [AdminController::class, 'unbanPlayer'])->name('players.unban');
@@ -88,6 +89,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Boss Management
     Route::get('/bosses', [AdminController::class, 'bosses'])->name('bosses');
+    Route::get('/bosses/data', [AdminController::class, 'bossesData'])->name('bosses.data');
     Route::post('/bosses/spawn', [AdminController::class, 'bossSpawn'])->name('bosses.spawn');
     Route::post('/bosses/kill', [AdminController::class, 'bossKill'])->name('bosses.kill');
 
