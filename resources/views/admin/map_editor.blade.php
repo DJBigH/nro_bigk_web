@@ -265,9 +265,10 @@
             <!-- Decorations Group -->
             <div>
                 <div style="font-weight: 600; color: #8b949e; font-size: 0.82rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 4px 0;" onclick="toggleDecorationsGroup()">
-                    <span id="rightDecoHeader">▶ Vật trang trí (34)</span>
-                    <button type="button" class="btn" style="background: none; border: none; color: #7ee787; font-size: 0.75rem; cursor: pointer;" onclick="event.stopPropagation(); openAddDecoModal()" title="Thêm trang trí">➕</button>
+                    <span id="rightDecoHeader">▶ Vật trang trí trên Map (34)</span>
+                    <button type="button" class="btn btn-sm" style="background: rgba(35, 134, 54, 0.2); border: 1px solid #3fb950; color: #7ee787; font-size: 0.72rem; padding: 1px 6px; border-radius: 4px; cursor: pointer;" onclick="event.stopPropagation(); openAddDecoModal()" title="Thêm từ kho mẫu toàn game">➕ Thêm</button>
                 </div>
+                <div style="font-size: 0.68rem; color: #6e7681; margin-bottom: 4px; padding-left: 2px;">(Kho game: 456 mẫu · Nhấn ➕ để chọn)</div>
                 <div id="rightDecoList" style="display: none; font-size: 0.75rem; color: #6e7681; padding-left: 2px;"></div>
             </div>
         </div>
@@ -391,28 +392,32 @@
 
 <!-- Modal: Thêm Vật Trang Trí (Cây cối, Nhà cửa, Cột mốc, Cỏ hoa...) -->
 <div id="addDecoModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center;">
-    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; width: 680px; max-width: 95vw; padding: 18px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; width: 740px; max-width: 95vw; padding: 18px; max-height: 88vh; display: flex; flex-direction: column;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #21262d; padding-bottom: 10px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.1rem;">🌲</span>
-                <h3 style="margin: 0; color: #7ee787; font-size: 1.05rem;">Thêm Vật Trang Trí (Cây Cối, Nhà Cửa, Cột Mốc, Cỏ Hoa...)</h3>
+                <span style="font-size: 1.2rem;">🌲</span>
+                <div>
+                    <h3 style="margin: 0; color: #7ee787; font-size: 1.05rem;">Kho Mẫu Vật Trang Trí Toàn Game</h3>
+                    <div style="font-size: 0.72rem; color: #8b949e; margin-top: 2px;">Tổng cộng 456 mẫu (348 hình ảnh) · Trải khắp 4 Layer</div>
+                </div>
             </div>
             <button type="button" onclick="closeAddDecoModal()" style="background: none; border: none; color: #888; font-size: 1.2rem; cursor: pointer;">&times;</button>
         </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-            <input type="text" id="searchDecoInput" oninput="filterDecoTemplates()" placeholder="Tìm theo ID template hoặc tên..." class="form-input" style="flex: 1; font-size: 0.85rem;">
-            <select id="filterDecoLayer" onchange="filterDecoTemplates()" class="form-input" style="width: 150px; font-size: 0.85rem;">
-                <option value="all">Tất cả Layer</option>
-                <option value="1">Layer 1 (Nền xa)</option>
-                <option value="2">Layer 2 (Trung cảnh)</option>
-                <option value="3">Layer 3 (Bề mặt)</option>
-                <option value="4">Layer 4 (Tiền cảnh)</option>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center;">
+            <input type="text" id="searchDecoInput" oninput="filterDecoTemplates()" placeholder="Tìm theo ID mẫu (0 - 455) hoặc ID ảnh..." class="form-input" style="flex: 1; min-width: 200px; font-size: 0.85rem;">
+            <select id="filterDecoLayer" onchange="filterDecoTemplates()" class="form-input" style="width: 220px; font-size: 0.85rem;">
+                <option value="all">Tất cả Layer (456 mẫu)</option>
+                <option value="1">Layer 1: Nền xa (176 mẫu)</option>
+                <option value="2">Layer 2: Trung cảnh (80 mẫu)</option>
+                <option value="3">Layer 3: Bề mặt (120 mẫu)</option>
+                <option value="4">Layer 4: Tiền cảnh (80 mẫu)</option>
             </select>
         </div>
-        <div id="decoTemplatesGrid" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 8px; padding: 4px; min-height: 280px; max-height: 420px;">
+        <div id="decoPaginationTop" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.78rem; color: #8b949e;"></div>
+        <div id="decoTemplatesGrid" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 4px; min-height: 280px; max-height: 420px;">
             <div style="text-align: center; color: #8b949e; padding: 40px; grid-column: 1 / -1;">Đang tải danh sách mẫu trang trí...</div>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px solid #21262d; padding-top: 10px;">
+        <div id="decoPaginationBottom" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #21262d; padding-top: 10px;">
             <div style="font-size: 0.78rem; color: #8b949e;">
                 Nhấp chuột vào mẫu để đặt trực tiếp vào giữa màn hình bản đồ.
             </div>
@@ -741,7 +746,7 @@ function updateHeaderInfo() {
         `Kích thước ${tw}×${th} ô (${canvas.width}×${canvas.height} px) · tileset ${currentMapData.tile_id} · nền ${currentMapData.bg_id} · ${zones} khu`;
     const decoHeader = document.getElementById('rightDecoHeader');
     if (decoHeader) {
-        decoHeader.innerText = `${isDecoGroupOpen ? '▼' : '▶'} Vật trang trí (${decos})`;
+        decoHeader.innerText = `${isDecoGroupOpen ? '▼' : '▶'} Vật trang trí trên Map (${decos})`;
     }
 }
 
@@ -1264,7 +1269,7 @@ function toggleDecorationsGroup() {
     const header = document.getElementById('rightDecoHeader');
     const cnt = (currentMapData && currentMapData.decorations) ? currentMapData.decorations.length : (currentMapData ? currentMapData.decorations_count : 0);
     if (header) {
-        header.innerText = `${isDecoGroupOpen ? '▼' : '▶'} Vật trang trí (${cnt})`;
+        header.innerText = `${isDecoGroupOpen ? '▼' : '▶'} Vật trang trí trên Map (${cnt})`;
     }
 }
 
@@ -1613,9 +1618,13 @@ function loadDecoTemplates() {
         });
 }
 
+let decoCurrentPage = 1;
+const decoPerPage = 60;
+
 function openAddDecoModal() {
     document.getElementById('addDecoModal').style.display = 'flex';
     document.getElementById('searchDecoInput').value = '';
+    decoCurrentPage = 1;
     const grid = document.getElementById('decoTemplatesGrid');
     if (grid) grid.innerHTML = `<div style="text-align: center; color: #8b949e; padding: 40px; grid-column: 1 / -1;">Đang tải danh sách mẫu trang trí...</div>`;
     loadDecoTemplates().then(() => renderDecoTemplatesList());
@@ -1626,7 +1635,15 @@ function closeAddDecoModal() {
 }
 
 function filterDecoTemplates() {
+    decoCurrentPage = 1;
     renderDecoTemplatesList();
+}
+
+function changeDecoPage(delta) {
+    decoCurrentPage += delta;
+    renderDecoTemplatesList();
+    const grid = document.getElementById('decoTemplatesGrid');
+    if (grid) grid.scrollTop = 0;
 }
 
 function renderDecoTemplatesList() {
@@ -1644,19 +1661,29 @@ function renderDecoTemplatesList() {
         entries = entries.filter(([id, t]) => id.includes(q) || String(t.img_id).includes(q));
     }
 
-    if (entries.length === 0) {
+    const total = entries.length;
+    if (total === 0) {
         grid.innerHTML = `<div style="text-align: center; color: #8b949e; padding: 40px; grid-column: 1 / -1;">Không tìm thấy mẫu trang trí phù hợp.</div>`;
+        updateDecoPagination(0, 0, 0, 0, 0);
         return;
     }
 
-    const showEntries = entries.slice(0, 120);
+    const totalPages = Math.ceil(total / decoPerPage);
+    if (decoCurrentPage < 1) decoCurrentPage = 1;
+    if (decoCurrentPage > totalPages) decoCurrentPage = totalPages;
+
+    const startIdx = (decoCurrentPage - 1) * decoPerPage;
+    const pageEntries = entries.slice(startIdx, startIdx + decoPerPage);
+
+    updateDecoPagination(decoCurrentPage, totalPages, total, startIdx + 1, Math.min(startIdx + decoPerPage, total));
+
     let html = '';
     const decoThemeQuery = currentEventTheme !== 'normal' ? '?theme=' + currentEventTheme : '';
-    showEntries.forEach(([id, t]) => {
+    pageEntries.forEach(([id, t]) => {
         html += `
             <div onclick="selectDecoToAdd(${id})" style="background: rgba(255,255,255,0.03); border: 1px solid #30363d; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='#7ee787'; this.style.background='rgba(35,134,54,0.15)';" onmouseout="this.style.borderColor='#30363d'; this.style.background='rgba(255,255,255,0.03)';">
                 <div style="height: 60px; width: 100%; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden;">
-                    <img src="/item-bg-image/${t.img_id}.png${decoThemeQuery}" onerror="this.src='/images/no_image.png'" style="max-height: 56px; max-width: 90%; object-fit: contain;">
+                    <img src="/item-bg-image/${t.img_id}.png${decoThemeQuery}" onerror="this.src='/images/no_image.png'" loading="lazy" style="max-height: 56px; max-width: 90%; object-fit: contain;">
                 </div>
                 <div style="text-align: center; width: 100%;">
                     <div style="font-size: 0.78rem; font-weight: 700; color: #7ee787;">Mẫu #${id}</div>
@@ -1665,10 +1692,48 @@ function renderDecoTemplatesList() {
             </div>
         `;
     });
-    if (entries.length > 120) {
-        html += `<div style="text-align: center; color: #8b949e; padding: 10px; grid-column: 1 / -1; font-size: 0.75rem;">(Hiển thị 120/${entries.length} mẫu · Nhập ID để tìm chính xác)</div>`;
-    }
     grid.innerHTML = html;
+}
+
+function updateDecoPagination(page, totalPages, totalCount, from, to) {
+    const topEl = document.getElementById('decoPaginationTop');
+    const btmEl = document.getElementById('decoPaginationBottom');
+    if (!topEl || !btmEl) return;
+
+    if (totalCount === 0) {
+        topEl.innerHTML = `<span>0 mẫu</span>`;
+        btmEl.innerHTML = `
+            <div style="font-size: 0.78rem; color: #8b949e;">0 mẫu</div>
+            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d;" onclick="closeAddDecoModal()">Đóng</button>
+        `;
+        return;
+    }
+
+    const prevDisabled = page <= 1 ? 'disabled style="opacity: 0.4; cursor: not-allowed; background: #161b22; border: 1px solid #30363d; color: #6e7681; padding: 2px 8px; font-size: 0.75rem; border-radius: 4px;"' : 'style="background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 2px 8px; font-size: 0.75rem; border-radius: 4px; cursor: pointer;"';
+    const nextDisabled = page >= totalPages ? 'disabled style="opacity: 0.4; cursor: not-allowed; background: #161b22; border: 1px solid #30363d; color: #6e7681; padding: 2px 8px; font-size: 0.75rem; border-radius: 4px;"' : 'style="background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 2px 8px; font-size: 0.75rem; border-radius: 4px; cursor: pointer;"';
+
+    const navHtml = `
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" class="btn btn-sm" onclick="changeDecoPage(-1)" ${prevDisabled}>◀ Trang trước</button>
+            <span style="font-weight: 600; color: #7ee787; font-size: 0.8rem;">Trang ${page}/${totalPages}</span>
+            <button type="button" class="btn btn-sm" onclick="changeDecoPage(1)" ${nextDisabled}>Trang sau ▶</button>
+        </div>
+    `;
+
+    topEl.innerHTML = `
+        <span>Đang hiển thị <b>${from}-${to}</b> / <b>${totalCount}</b> mẫu</span>
+        ${navHtml}
+    `;
+
+    btmEl.innerHTML = `
+        <div style="font-size: 0.78rem; color: #8b949e;">
+            Nhấp chuột vào mẫu để đặt trực tiếp vào giữa màn hình bản đồ.
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            ${navHtml}
+            <button type="button" class="btn" style="background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 4px 12px; font-size: 0.78rem;" onclick="closeAddDecoModal()">Đóng</button>
+        </div>
+    `;
 }
 
 function selectDecoToAdd(tplId) {
