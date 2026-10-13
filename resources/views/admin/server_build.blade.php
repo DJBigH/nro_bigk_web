@@ -33,6 +33,12 @@
             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #238636; box-shadow: 0 0 8px #238636;"></span>
             <span style="color: #c9d1d9;">nro-panel · <strong style="color: #3fb950;">active</strong></span>
         </span>
+        <span style="display: flex; align-items: center; gap: 6px;">
+            <a href="{{ route('admin.events') }}" style="color: #ffd700; text-decoration: none; display: flex; align-items: center; gap: 5px;" title="Xem và điều khiển 11 sự kiện Realtime">
+                <span>🎉</span>
+                <span style="color: #c9d1d9;">event · <strong style="color: #58a6ff;">Quản Lý Sự Kiện →</strong></span>
+            </a>
+        </span>
     </div>
 </div>
 

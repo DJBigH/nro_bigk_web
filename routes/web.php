@@ -142,6 +142,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/map-editor/save', [AdminController::class, 'mapEditorSave'])->name('map_editor.save');
     Route::post('/map-editor/save-theme', [AdminController::class, 'saveEventTheme'])->name('map_editor.save_theme');
 
+    // Quản Lý Sự Kiện (Realtime Game Events)
+    Route::get('/events', [AdminController::class, 'events'])->name('events');
+    Route::post('/events/update', [AdminController::class, 'eventUpdate'])->name('events.update');
+    Route::post('/events/clear-cache', [AdminController::class, 'eventClearCache'])->name('events.clear_cache');
+
     // Server & Build
     Route::get('/server-build', [AdminController::class, 'serverBuild'])->name('server_build');
     Route::post('/server-build/action', [AdminController::class, 'serverBuildAction'])->name('server_build.action');

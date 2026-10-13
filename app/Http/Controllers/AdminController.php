@@ -1568,13 +1568,19 @@ class AdminController extends Controller
             }
         }
 
+        $eventsMetadata = $this->getEventsMetadata();
+        $serverEvent = $this->callGameApi('/api/server/event', [], 'GET');
+        if ($serverEvent['success'] ?? false) {
+            $currentServerEvent = (int) ($serverEvent['current_event'] ?? $currentServerEvent);
+        }
+
         $npcTemplates = DB::table('npc_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'avatar')->orderBy('id', 'asc')->get();
         $radarMobIcons = DB::table('radar')->where('type', 0)->pluck('iconId', 'template')->toArray();
         $mobTemplates = DB::table('mob_template')->select('id', DB::raw('COALESCE(NAME, name) as name'), 'hp')->orderBy('id', 'asc')->get();
         foreach ($mobTemplates as $mt) {
             $mt->iconId = $radarMobIcons[$mt->id] ?? 0;
         }
-        return view('admin.map_editor', compact('maps', 'npcTemplates', 'mobTemplates', 'currentServerEvent'));
+        return view('admin.map_editor', compact('maps', 'npcTemplates', 'mobTemplates', 'currentServerEvent', 'eventsMetadata'));
     }
 
     public function mapEditorData(Request $request)
@@ -2021,25 +2027,286 @@ class AdminController extends Controller
 
             file_put_contents($eventConfigFile, $content);
 
-            $eventNames = [
-                0 => 'Mặc định (Bình thường)',
-                1 => 'Tết Nguyên Đán',
-                2 => 'Giáng Sinh (Tuyết rơi)',
-                3 => 'Trung Thu',
-                4 => 'Halloween',
-                5 => 'Mùa Hè',
-                6 => 'Giỗ Tổ Hùng Vương',
-                7 => 'Valentine',
-                8 => 'Đại Lễ 30/4 - 1/5',
-                9 => 'Tây Du Ký',
-                10 => 'Quốc Tế Thiếu Nhi 1/6'
-            ];
-            $eventName = $eventNames[$eventId] ?? "Sự kiện #$eventId";
+            $events = $this->getEventsMetadata();
+            $eventName = $events[$eventId]['name'] ?? "Sự kiện #$eventId";
+
+            // Attempt realtime synchronization via Game Server API
+            $realtimeRes = $this->callGameApi('/api/server/event', [
+                'event_id' => $eventId,
+                'duration_hours' => 0
+            ]);
+            $isRealtime = $realtimeRes['success'] ?? false;
 
             return response()->json([
                 'success' => true,
-                'message' => "Đã lưu cài đặt sự kiện Máy chủ: {$eventName}!"
+                'message' => "Đã lưu cài đặt sự kiện: {$eventName}" . ($isRealtime ? " (Áp dụng Realtime ngay trên Game Server)!" : "!")
             ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Complete metadata for all 11 Game Events
+     */
+    public function getEventsMetadata()
+    {
+        return [
+            0 => [
+                'id' => 0,
+                'name' => 'Bình Thường (Mặc Định)',
+                'short_name' => 'Bình Thường',
+                'icon' => '🌿',
+                'badge' => 'Mặc định',
+                'color' => '#8b949e',
+                'desc' => 'Không có sự kiện, bản đồ và tài nguyên nguyên bản.',
+                'npc' => 'Không có NPC sự kiện',
+                'items' => 'Tài nguyên gốc server',
+                'highlight' => 'Trạng thái server tiêu chuẩn nguyên bản'
+            ],
+            1 => [
+                'id' => 1,
+                'name' => 'Tết Nguyên Đán',
+                'short_name' => 'Tết Nguyên Đán',
+                'icon' => '🧧',
+                'badge' => 'Lễ Hội',
+                'color' => '#f85149',
+                'desc' => 'Nấu Bánh Tét, Bánh Chưng, Hộp Quà Tết, Pháo Hoa, Cải Trang Thần Tài.',
+                'npc' => 'Lý Tiểu Nương (ID 54)',
+                'items' => 'Bánh chưng, Bánh tét, Thiệp chúc tết, Hộp quà tết, Pháo hoa, Cải trang Thần Tài',
+                'highlight' => 'Bản đồ hoa mai vàng & hoa đào khoe sắc'
+            ],
+            2 => [
+                'id' => 2,
+                'name' => 'Giáng Sinh / Noel (Tuyết)',
+                'short_name' => 'Giáng Sinh (Tuyết)',
+                'icon' => '❄️',
+                'badge' => 'Mùa Đông',
+                'color' => '#58a6ff',
+                'desc' => 'Bản đồ tuyết rơi, Santa phát quà, Kẹo Noel, Nón Noel, Cải Trang Noel Vip.',
+                'npc' => 'Santa Claus (ID 39)',
+                'items' => 'Kẹo giáng sinh, Nón Noel Đỏ/Xanh, Hộp quà Noel, Cải trang Noel Vip',
+                'highlight' => 'Cây cối và nhà cửa phủ tuyết trắng xóa'
+            ],
+            3 => [
+                'id' => 3,
+                'name' => 'Sự Kiện Trung Thu',
+                'short_name' => 'Trung Thu',
+                'icon' => '🥮',
+                'badge' => 'Lễ Hội',
+                'color' => '#d29922',
+                'desc' => 'Bánh Nướng, Bánh Dẻo, Lồng Đèn, Chị Hằng, Pet Thỏ Ngọc, Cải Trang Hằng Nga.',
+                'npc' => 'Chị Hằng (ID 92)',
+                'items' => 'Bánh dẻo, Bánh nướng, Hạt sen, Đậu xanh, Lồng đèn, Pet Thỏ Ngọc',
+                'highlight' => 'Lễ hội trăng rằm, rước đèn & phá cỗ'
+            ],
+            4 => [
+                'id' => 4,
+                'name' => 'Sự Kiện Halloween',
+                'short_name' => 'Halloween',
+                'icon' => '🎃',
+                'badge' => 'Lễ Hội',
+                'color' => '#bc8cff',
+                'desc' => 'Bí Ngô Ma Quái, Kẹo Phù Thủy, Quái Bí Ngô, Cải Trang Ma Cà Rồng & Bí Ngô.',
+                'npc' => 'Ông Già Bí Ngô (ID 75)',
+                'items' => 'Kẹo Halloween, Quả Bí ngô, Răng nanh, Áo choàng ma',
+                'highlight' => 'Không khí kinh dị, quái bí ngô xuất hiện khắp nơi'
+            ],
+            5 => [
+                'id' => 5,
+                'name' => 'Mùa Hè Sôi Động (Đi Biển)',
+                'short_name' => 'Mùa Hè Sôi Động',
+                'icon' => '🏖️',
+                'badge' => 'Mùa Hè',
+                'color' => '#3fb950',
+                'desc' => 'Thu hoạch Dưa Hấu, Vỏ Sò, Cải Trang Đi Biển, Nón Rơm Mùa Hè.',
+                'npc' => 'Ông Ngư Dân (ID 98)',
+                'items' => 'Dưa hấu, Vỏ ốc, Sao biển, Kem giải khát, Nón rơm đi biển',
+                'highlight' => 'Thu thập giải khát và thời trang biển rực rỡ'
+            ],
+            6 => [
+                'id' => 6,
+                'name' => 'Giỗ Tổ Hùng Vương',
+                'short_name' => 'Giỗ Tổ Hùng Vương',
+                'icon' => '👑',
+                'badge' => 'Truyền Thống',
+                'color' => '#e3b341',
+                'desc' => 'Sính Lễ Voi 9 Ngà, Ngựa 9 Mao, Gà 9 Cựa, Nấu Bánh Chưng, CT Sơn Tinh, Thủy Tinh, Mị Nương (Top 1 Server).',
+                'npc' => 'Mị Nương (ID 77)',
+                'items' => 'Voi 9 ngà, Ngựa 9 mao, Gà 9 cựa, Bánh chưng đất tổ',
+                'highlight' => 'Đua TOP dâng sính lễ nhận Cải Trang Mị Nương Vô Cực'
+            ],
+            7 => [
+                'id' => 7,
+                'name' => 'Valentine & Ngày Phụ Nữ',
+                'short_name' => 'Valentine & Phụ Nữ',
+                'icon' => '🌹',
+                'badge' => 'Tình Yêu',
+                'color' => '#f778ba',
+                'desc' => 'Hoa Hồng, Socola, Hộp Quà Tình Nhân, Cải Trang Cặp Đôi.',
+                'npc' => 'Lý Tiểu Nương (ID 54)',
+                'items' => 'Hoa hồng đỏ, Socola tình yêu, Hộp quà tình nhân, Nhẫn đôi',
+                'highlight' => 'Tặng hoa ghép cặp, tăng chỉ số khi đi cùng nhau'
+            ],
+            8 => [
+                'id' => 8,
+                'name' => 'Đại Lễ 30/4 - 1/5 & 2/9',
+                'short_name' => 'Đại Lễ 30/4 & 2/9',
+                'icon' => '🎆',
+                'badge' => 'Quốc Khánh',
+                'color' => '#ff7b72',
+                'desc' => 'x2 EXP Toàn Server, Bắn Pháo Hoa, Cờ Tổ Quốc, Huy Hiệu Chiến Thắng.',
+                'npc' => 'Quốc Vương (ID 42)',
+                'items' => 'Huy hiệu chiến thắng, Pháo hoa đại lễ, Cờ đỏ sao vàng',
+                'highlight' => 'Nhân đôi toàn bộ kinh nghiệm train quái & rớt vàng'
+            ],
+            9 => [
+                'id' => 9,
+                'name' => 'Sự Kiện Tây Du Ký',
+                'short_name' => 'Tây Du Ký',
+                'icon' => '🐒',
+                'badge' => 'Huyền Thoại',
+                'color' => '#e36209',
+                'desc' => 'Sưu tầm chữ [GIẢI-KHAI-PHONG-ẤN], Quả Hồng Đào Tiên, Gậy Như Ý, Vòng Kim Cô.',
+                'npc' => 'Đường Tăng (ID 49)',
+                'items' => 'Chữ GIẢI-KHAI-PHONG-ẤN, Hồng đào tiên, Gậy như ý, Kim cô',
+                'highlight' => 'Thỉnh kinh hộ tống, đại náo thiên cung'
+            ],
+            10 => [
+                'id' => 10,
+                'name' => 'Quốc Tế Thiếu Nhi (1/6)',
+                'short_name' => 'Quốc Tế Thiếu Nhi',
+                'icon' => '🎈',
+                'badge' => 'Thiếu Nhi',
+                'color' => '#56d364',
+                'desc' => 'Hộp Quà Thiếu Nhi, Bong Bóng Bay, Cải Trang Arale, Pet Ngộ Nghĩnh.',
+                'npc' => 'Tori-Bot (ID 74)',
+                'items' => 'Bong bóng nhiều màu, Kẹo mút, Hộp quà thiếu nhi, Pet bé ngoan',
+                'highlight' => 'Nhận quà mỗi ngày, mini game tuổi thơ'
+            ]
+        ];
+    }
+
+    /**
+     * Dedicated Event Management Page
+     */
+    public function events(Request $request)
+    {
+        $events = $this->getEventsMetadata();
+
+        // 1. Fetch live event status from Game Server
+        $serverEvent = $this->callGameApi('/api/server/event', [], 'GET');
+        $isGameActive = ($serverEvent['success'] ?? false) || @fsockopen('127.0.0.1', 14445, $errno, $errstr, 0.3) !== false;
+
+        $currentEventId = 0;
+        $eventEndTime = 0;
+        $timeRemaining = 'Không áp dụng';
+
+        if ($serverEvent['success'] ?? false) {
+            $currentEventId = (int) ($serverEvent['current_event'] ?? 0);
+            $eventEndTime = (int) ($serverEvent['event_end_time'] ?? 0);
+            $timeRemaining = $serverEvent['time_remaining'] ?? 'Không áp dụng';
+        } else {
+            // Read from properties file as fallback
+            $eventConfigFile = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/event_config.properties";
+            if (file_exists($eventConfigFile)) {
+                $lines = file($eventConfigFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                foreach ($lines as $line) {
+                    if (str_starts_with(trim($line), 'current_event=')) {
+                        $parts = explode('=', trim($line), 2);
+                        $currentEventId = (int) ($parts[1] ?? 0);
+                    }
+                    if (str_starts_with(trim($line), 'event_end_time=')) {
+                        $parts = explode('=', trim($line), 2);
+                        $eventEndTime = (int) ($parts[1] ?? 0);
+                    }
+                }
+            }
+            if ($currentEventId > 0) {
+                $timeRemaining = $eventEndTime > 0 ? date('d/m/Y H:i', $eventEndTime / 1000) : 'Vĩnh viễn';
+            }
+        }
+
+        $activeEvent = $events[$currentEventId] ?? $events[0];
+
+        return view('admin.events', compact(
+            'events',
+            'currentEventId',
+            'activeEvent',
+            'timeRemaining',
+            'eventEndTime',
+            'isGameActive'
+        ));
+    }
+
+    /**
+     * Update Event in Realtime or with Maintenance
+     */
+    public function eventUpdate(Request $request)
+    {
+        try {
+            $eventId = (int) $request->input('event_id', 0);
+            $durationHours = (int) $request->input('duration_hours', 0);
+            $maintenance = (bool) $request->input('maintenance', false);
+            $delaySeconds = (int) $request->input('delay_seconds', 10);
+
+            if ($eventId < 0 || $eventId > 10) {
+                return response()->json(['success' => false, 'message' => 'ID sự kiện không hợp lệ! Vui lòng chọn 0 đến 10.']);
+            }
+
+            // 1. Persistent file update
+            $eventConfigFile = "d:/nro/srcnrobigk03032026/nrobigkv7/soicon/data/girlkun/event_config.properties";
+            $endTimeCalc = $durationHours > 0 ? (time() * 1000 + ($durationHours * 3600 * 1000)) : 0;
+            $content = "#NRO Server Event Configuration\n";
+            $content .= "#Updated via Web Admin on " . date('Y-m-d H:i:s') . "\n";
+            $content .= "event_end_time=" . $endTimeCalc . "\n";
+            $content .= "current_event=" . $eventId . "\n";
+            file_put_contents($eventConfigFile, $content);
+
+            // 2. Realtime update via Game Server API
+            $apiRes = $this->callGameApi('/api/server/event', [
+                'event_id' => $eventId,
+                'duration_hours' => $durationHours,
+                'maintenance' => $maintenance,
+                'delay_seconds' => $delaySeconds
+            ]);
+
+            $events = $this->getEventsMetadata();
+            $evName = $events[$eventId]['name'] ?? "Sự kiện #$eventId";
+
+            if ($apiRes['success'] ?? false) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $apiRes['message'] ?? "Đã kích hoạt sự kiện {$evName} thành công!",
+                    'current_event' => $eventId,
+                    'event_name' => $evName,
+                    'is_realtime' => true
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã lưu cài đặt sự kiện {$evName} vào cấu hình máy chủ (Game Server đang offline, sẽ tự nạp khi bật game)!",
+                'current_event' => $eventId,
+                'event_name' => $evName,
+                'is_realtime' => false
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Clear client background cache
+     */
+    public function eventClearCache(Request $request)
+    {
+        try {
+            $apiRes = $this->callGameApi('/api/server/event', ['clear_cache' => true]);
+            if ($apiRes['success'] ?? false) {
+                return response()->json(['success' => true, 'message' => $apiRes['message'] ?? 'Đã xóa sạch cache client!']);
+            }
+            return response()->json(['success' => true, 'message' => 'Đã gửi lệnh xóa cache nền client.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
         }

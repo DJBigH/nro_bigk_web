@@ -100,6 +100,11 @@
                         </a>
                     </li>
                     <li style="margin-top: 4px;">
+                        <a href="{{ route('admin.events') }}" class="admin-menu-link {{ Route::is('admin.events*') ? 'active' : '' }}">
+                            🎉 QUẢN LÝ SỰ KIỆN
+                        </a>
+                    </li>
+                    <li style="margin-top: 4px;">
                         <a href="{{ route('admin.drops') }}" class="admin-menu-link {{ Route::is('admin.drops*') ? 'active' : '' }}">
                             🎁 RƠI ĐỒ QUÁI (DROPS)
                         </a>

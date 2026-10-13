@@ -164,13 +164,21 @@
                 <!-- Event Theme Selector -->
                 <div style="display: flex; align-items: center; gap: 4px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 2px 6px;">
                     <span style="font-size: 0.76rem; color: #8b949e; white-space: nowrap;">🎉 Sự kiện:</span>
-                    <select id="selectEventTheme" onchange="changeEventTheme(this.value)" class="form-input" style="padding: 2px 6px; font-size: 0.78rem; height: 26px; width: 140px; background: #0d1117; border-color: #30363d; color: #58a6ff; font-weight: 600;">
-                        <option value="normal" {{ ($currentServerEvent ?? 0) == 0 ? 'selected' : '' }}>🌿 Mặc định</option>
-                        <option value="tet" {{ ($currentServerEvent ?? 0) == 1 ? 'selected' : '' }}>🧧 Tết Nguyên Đán</option>
-                        <option value="tuyet" {{ ($currentServerEvent ?? 0) == 2 ? 'selected' : '' }}>❄️ Giáng Sinh (Tuyết)</option>
+                    <select id="selectEventTheme" onchange="changeEventTheme(this.value)" class="form-input" style="padding: 2px 6px; font-size: 0.78rem; height: 26px; width: 175px; background: #0d1117; border-color: #30363d; color: #58a6ff; font-weight: 600;">
+                        @if(isset($eventsMetadata) && count($eventsMetadata) > 0)
+                            @foreach($eventsMetadata as $ev)
+                                <option value="{{ $ev['id'] }}" {{ ($currentServerEvent ?? 0) == $ev['id'] ? 'selected' : '' }}>
+                                    {{ $ev['icon'] }} {{ $ev['id'] }}: {{ $ev['short_name'] }}
+                                </option>
+                            @endforeach
+                        @else
+                            <option value="0" {{ ($currentServerEvent ?? 0) == 0 ? 'selected' : '' }}>🌿 0: Bình Thường</option>
+                            <option value="1" {{ ($currentServerEvent ?? 0) == 1 ? 'selected' : '' }}>🧧 1: Tết Nguyên Đán</option>
+                            <option value="2" {{ ($currentServerEvent ?? 0) == 2 ? 'selected' : '' }}>❄️ 2: Giáng Sinh (Tuyết)</option>
+                        @endif
                     </select>
-                    <button type="button" class="btn" onclick="saveEventThemeToServer()" title="Lưu và áp dụng sự kiện này cho máy chủ Game" style="background: #238636; color: #fff; border: none; font-size: 0.74rem; padding: 2px 7px; border-radius: 4px; height: 24px; cursor: pointer;">
-                        💾 Áp dụng
+                    <button type="button" class="btn" onclick="saveEventThemeToServer()" title="Lưu và áp dụng sự kiện này Realtime cho Game Server" style="background: #238636; color: #fff; border: none; font-size: 0.74rem; padding: 2px 7px; border-radius: 4px; height: 24px; cursor: pointer; white-space: nowrap;">
+                        ⚡ Áp dụng Realtime
                     </button>
                 </div>
 
@@ -517,7 +525,8 @@ function getTileImage(tileId, tileIndex) {
     return tileImageCache[key];
 }
 
-let currentEventTheme = '{{ ($currentServerEvent ?? 0) == 1 ? "tet" : (($currentServerEvent ?? 0) == 2 ? "tuyet" : "normal") }}';
+let currentEventId = {{ $currentServerEvent ?? 0 }};
+let currentEventTheme = currentEventId == 1 ? 'tet' : (currentEventId == 2 ? 'tuyet' : 'normal');
 const decoImageCache = {};
 
 function getDecoImage(imgId) {
@@ -533,24 +542,28 @@ function getDecoImage(imgId) {
     return decoImageCache[cacheKey];
 }
 
-function changeEventTheme(theme) {
-    currentEventTheme = theme;
+function changeEventTheme(val) {
+    const id = parseInt(val) || 0;
+    currentEventId = id;
+    if (id === 1) currentEventTheme = 'tet';
+    else if (id === 2) currentEventTheme = 'tuyet';
+    else currentEventTheme = 'normal';
+
     if (document.getElementById('addDecoModal') && document.getElementById('addDecoModal').style.display !== 'none') {
         renderDecoTemplatesList();
     }
     requestAnimationFrame(renderCanvas);
     renderRightInspector();
     if (window.showToast) {
-        const nameMap = { 'normal': 'Mặc định (Bình thường)', 'tet': 'Tết Nguyên Đán', 'tuyet': 'Giáng Sinh (Tuyết rơi)' };
-        window.showToast(`Đã chuyển xem trước chủ đề: ${nameMap[theme] || theme}`, 'info');
+        const sel = document.getElementById('selectEventTheme');
+        const optText = sel ? sel.options[sel.selectedIndex].text : `Sự kiện #${id}`;
+        window.showToast(`Đã chọn xem trước chủ đề: ${optText}`, 'info');
     }
 }
 
 function saveEventThemeToServer() {
-    const themeVal = document.getElementById('selectEventTheme') ? document.getElementById('selectEventTheme').value : currentEventTheme;
-    let eventId = 0;
-    if (themeVal === 'tet') eventId = 1;
-    else if (themeVal === 'tuyet') eventId = 2;
+    const sel = document.getElementById('selectEventTheme');
+    const eventId = sel ? (parseInt(sel.value) || 0) : currentEventId;
 
     fetch("{{ route('admin.map_editor.save_theme') }}", {
         method: 'POST',
@@ -572,7 +585,7 @@ function saveEventThemeToServer() {
     })
     .catch(err => {
         console.error(err);
-        if (window.showToast) window.showToast('Lỗi gửi yêu cầu lưu sự kiện!', 'error');
+        if (window.showToast) window.showToast('Lỗi gửi yêu cầu kích hoạt sự kiện!', 'error');
     });
 }
 
