@@ -463,9 +463,20 @@ class AdminController extends Controller
         return response()->json($res);
     }
 
-    public function botStop()
+    public function botStop(Request $request)
     {
-        $res = $this->callGameApi('/api/bot/stop');
+        $payload = [];
+        if ($request->has('bot_id')) {
+            $payload['bot_id'] = (int) $request->bot_id;
+        } elseif ($request->has('bot_ids') && is_array($request->bot_ids)) {
+            $payload['bot_ids'] = array_map('intval', $request->bot_ids);
+        } elseif ($request->has('count')) {
+            $payload['count'] = (int) $request->count;
+        }
+        $res = $this->callGameApi('/api/bot/stop', $payload);
+        if (!isset($res['success']) && isset($res['status'])) {
+            $res['success'] = ($res['status'] === 'success');
+        }
         return response()->json($res);
     }
 
